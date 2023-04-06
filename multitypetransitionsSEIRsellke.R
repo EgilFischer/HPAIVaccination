@@ -24,13 +24,13 @@ package.check <- lapply(
 )
 
 #scenario
-scenario <- "brioler";
+scenario <- "broiler";
 
 #parameters####
 itypes <- 2;
 
 #these should be fitting to the number of types
-N0 <- 45000
+N0 <- 100
 #proportion initially protected by vaccination
 p.protect = 0.9;
 initial<- 10 
@@ -74,7 +74,7 @@ param.list <- list(
   itypes = itypes,
   N0=  N0,
   p.protect = p.protect,
-  initial.latent = initial.latent,
+  initial = initial,
   L0 = L0,
   I0 = I0,
   R0 =R0,
@@ -272,8 +272,8 @@ while(currun <= runs){
         #set individual state
         indiv.states[first(events$id),]$state<- "DR";
         
-        #remove events
-        events<- subset(events, id != first(events$id))
+        #remove events of this animal but keep the current event
+        events<- rbind(first(events),subset(events, id != first(events$id)))
       }
       
     }
@@ -296,7 +296,7 @@ while(currun <= runs){
       events<- rbind(events, data.frame(time =c(state$time + latPeriod+infPeriod),
                                         type = c("IR"), 
                                         id = first(events$id))) #I -> R
-    
+      if(exists("maxInfperiod")){ maxInfperiod<- max(maxInfperiod, infPeriod,na.rm =T) }else maxInfperiod <- infPeriod;
       indiv.states[first(events$id),]$dieatrec <- (rbinom(n =1, size = 1, p = pdie[indiv.states[first(events$id),]$itype]))>0
       
       #remove resistance of this particular animal
@@ -323,7 +323,7 @@ while(currun <= runs){
         } #or events
       else if(typeM =="L" || typeM == "I"){
         #select and remove events of this animal
-        events<- subset(events, id != animalid)
+        events<- rbind(first(events),subset(events, id != animalid))
       }
       
      
@@ -411,7 +411,8 @@ while(currun <= runs){
     
   }
   #record output and parameters
-  saveRDS(list(out = output, pars = param.list),file = paste0("output/",format(Sys.Date(),"%Y%m%d"),"output_",scenario,"_",currun,".RDS"))
+  op <- list(out = output, pars = param.list)
+  saveRDS(op, file = paste0(format(Sys.Date(),"%Y%m%d"),"output",scenario,"",currun,".RDS"))
   
   #add on to the current run counter
   currun <- currun +1
