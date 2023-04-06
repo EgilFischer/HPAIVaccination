@@ -1,0 +1,105 @@
+---
+title: "Technical report AI vaccination project"
+author: "Egil A.J.Fischer"
+date: "2023-04-05"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+```
+
+## Objectives and research questions
+The objective of this study is to quantify the risk difference of humans being infected during an outbreak of avian influenza in a (partially) vaccinated herd versus non-vaccinated herds. 
+
+## Model description
+We use a two-type stochastic SIRD-model. The population is divided into two type 1 and 2 which are birds with a low or high HAR titre. Differences between these two types of birds are infectivity and/or susceptibility and mortality. We assume equal infectious periods.
+Birds can loose the high titre status with a specific rate at which they become type 1 (low titre). 
+Background mortality is equal for both types, but type 1 (low titre birds) are assumed to die at recovery, while type 2 (high titre birds) are assumed to survive. 
+Human infection is affected by the amount of virus shedded. The dose-response relationship is assumed to be equal to the between-bird transmission and thus proportionate to the transmission rates between-birds. The force of infection of an infected flock towards a human is thus:
+
+$$FOI_{chicken to human} = \alpha \frac{\beta_{11} Y_1 + \beta_{22} Y_2}{N}$$
+
+With $\beta_ii$ being the transmission rate from type $i$ to animals of the same type and $\alpha$ a scaling factor for susceptibility if humans to this strain. The probability of a human being infected at a certain time $t$ is thus:
+
+$$P_{infection}(t)=1 - e^{\int_0^t{-\alpha \frac{\beta_{11} Y_1(\tau) + \beta_{22} Y_2(\tau)}{N} d\tau}}$$
+To obtain the number of infectious birds we use a simulation of the stochastic model. From this model we define the course of outbreaks and the moment of detection based on the number of dead birds in a given interval.
+
+
+To obtain the distribution of relative risk of vaccinated versus unvaccinated flocks we simulate both situations and report the distribution of infection probabilities until the detection time of each outbreak.
+
+## Parameter values
+Parameter values are based on Germeraad et al. 2023 \url(https://edepot.wur.nl/584306).
+```{r pressure, echo=FALSE}
+param.list <- list(
+  itypes = 2,
+  N0=  50000,
+  p.protect = .9,
+  initial.latent = 0,
+  L0 = 0,
+  I0 = 10,
+  R0 =0,
+  S0 =50000-10,
+  runs =10,
+  max.time =365,
+  beta = matrix(c(3.73, 3.73,0.058,0.058),ncol = 2),
+  latency.period = c(0,0),
+  dL = function(U,itype){return(-log(1 - U)*latency.period[2])},
+  infectious.period = c(1.47,1.47),
+  variance.infectious.period = c(1.47,1.47)^2,
+  dI =function(U,itype){return(qgamma(U, shape = infectious.period[itype]^2/variance.infectious.period[itype] , rate = infectious.period[itype]/variance.infectious.period[itype]))} ,#exponential function,
+ transRate = matrix(c(0,0.038,0.0,0), nrow = 2), #value based on https://nvaidya.sdsu.edu/SIAP2015.pdf
+dT = function(U,itype1,itype2){return(-log(1 -U)/transRate[itype1,itype2])}, #exponential function
+  pdie = c(0.95,0.),
+  mortRate = 0.0005,
+  dLE =function(U){return(-log(1 -U)/mortRate)}
+)
+print("Population size N0:")
+param.list$N0
+print("transmission coefficients")
+param.list$beta
+print("infectious periods")
+param.list$infectious.period
+print("Probability of dying")
+param.list$pdie
+print("Waning of immunity (transfer type i to j)")
+param.list$transRate
+
+                
+```
+
+## Probability of a major outbreak
+Similar to the probability of a minor outbreak in a single type outbreak the probability of a minor outbreak in a two type model can be determined assuming a branching process in which $q_j$ is the probability of a branch starting with type $j$ going extinct is given by the probability of this individual recovering or dying before it produces a new branch + the probability of new branches going extinct:
+$q_1 = \frac{\gamma_1 +\mu + \beta_{11}\frac{N_1}{N_1 +N_2}q_1^2  + \beta_{12}\frac{N_2}{N_1 +N_2} q_1 q_2}{\gamma_1 +\mu + \beta_{11}\frac{N_1}{N_1 +N_2}  + \beta_{12}\frac{N_2}{N_1 +N_2}}$
+$q_2 = \frac{\gamma_2 +\mu + \beta_{21}\frac{N_1}{N_1 +N_2}q_1 q_2  + \beta_{22}\frac{N_2}{N_1 +N_2} q_2^2}{\gamma_2 +\mu + \beta_{21}\frac{N_1}{N_1 +N_2}  + \beta_{22}\frac{N_2}{N_1 +N_2}}$
+
+```{r echo = FALSE}
+source("probMajorOutbreak.R")
+q1q2 <- data.frame(t(sapply(FUN = function(p){c(p,multiroot(f = model, start = c(.01,
+                                                                                0.1),
+                                                      rtol = 1E-15,parms = list(N = c( (1-p), p),
+                                                                               gamma = c(1/1.47,1/1.47), beta = matrix(c(3.84,3.84,0.058,0.058),nrow = 2), mu = 0.0005))$root)}, X = seq(0,1,.01))))
+names(q1q2)<- c("p","q1","q2");
+
+#initial number of infected animals per group
+n = 10;
+
+
+ggplot(data =q1q2)+
+  geom_path(aes(p,1 - q1^(n), colour = "1"))+
+  geom_path(aes(p,1-  q2^(n), colour = "2"))+
+  geom_path(aes(p,1-(q1^(n*(1-p))* q2^(n*p)), colour = "Type 1 & 2 ratio as vaccination coverage"))+
+  xlab("Vaccinated coverage")+
+  ylab("Probability of a major outbreak")+ 
+  scale_colour_manual(name = paste("Introduction by",n,"birds"),
+                     # labels = c("Type 1 only","Type 1 & 2","Type 2 only"),
+                      values = c("red","blue","black"))
+
+```
+
+
+## Outbreak simulations
+
+
+
