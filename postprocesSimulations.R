@@ -25,8 +25,8 @@ package.check <- lapply(
 
 #import simulations
 for(i in c(1:runs)){
-  if(i == 1)output <- as.data.frame(readRDS("20230405output1.RDS")$out)
-  output <- rbind(output,as.data.frame(readRDS(paste0("20230405output",i,".RDS"))$out))
+  if(i == 1)output <- as.data.frame(readRDS("output/","20230406output1.RDS")$out)
+  output <- rbind(output,as.data.frame(readRDS(paste0("output/","20230406output",i,".RDS"))$out))
 }
 
 ##plot the output

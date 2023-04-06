@@ -408,14 +408,14 @@ while(currun <= runs){
     
   }
   #record output and parameters
-  saveRDS(list(out = output, pars = param.list),file = paste0(format(Sys.Date(),"%Y%m%d"),"output",currun,".RDS"))
+  saveRDS(list(out = output, pars = param.list),file = paste0("output/",format(Sys.Date(),"%Y%m%d"),"output",currun,".RDS"))
   
   #add on to the current run counter
   currun <- currun +1
   #for debugging reocrd time
   timing.run <-c(timing.run, Sys.time()-start.time.run)
 }; timing.overall <-Sys.time() - start.time.overal;
-#saveRDS(output,file = paste0(format(Sys.Date(),"%Y%m%d"),"output.RDS"))
+
 
 hist(timing.run)
 print(timing.overall)
