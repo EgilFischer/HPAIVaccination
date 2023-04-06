@@ -100,6 +100,19 @@ ggplot(data =q1q2)+
 
 
 ## Outbreak simulations
+Simulations were produced for broilers (round of 42 days) and layers (rounds of 17 months approx 500 days);
+For layers we consider introduction at the beginning of round and half way, such that different vaccination levels occur
+Outbreaks are simulated in one of the following scenarios:
+```{r echo = FALSE}
+df <- data.frame(scenario = c(1,2,3),
+                 bird  = c("broiler","layer","layer"),
+                 roundlength = c(42,500,250),
+                 populationsize = c(75000,45000,45000),
+                 initial.infected = 10,
+                 proportion.hightitre = format(c(0.9,0.9, 0.9*exp(-param.list$transRate[2,1]*250 )), digits =2,scientific = F))
+kable(df)
 
-
+```
+For each scenario the model was run 10 times. 
+```
 

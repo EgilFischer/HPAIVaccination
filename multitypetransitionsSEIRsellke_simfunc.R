@@ -69,7 +69,7 @@ pdie <- c(0.95,0.0)
 mortRate <- 0.0005 #per capita death rate 
 dLE <- function(U){return(-log(1 -U)/mortRate)} #life expectancy as function of random variable U
 
-#create a list of all parameters
+#create a list of all parameters####
 param.list <- list(
   itypes = itypes,
   N0=  N0,
@@ -94,52 +94,55 @@ param.list <- list(
   dLE =dLE
 )
 
-#initialize
-output <- list(time = c(0), N = c(N0),C=c(0), run =c(1),dt = c(0))
-output$S<- S0
-output$L<- L0
-output$I<- I0
-output$R <- R0
-output$DS <- 0*S0
-output$DL <- 0*L0
-output$DI <- 0*I0
-output$DR <- 0*R0
+
+sim.SEIR.sellkemultitype<- function(parms)
+{with(parms,{
+#initialize####
+output <- list(time = c(0), N = c(N0),C=c(0), run =c(1),dt = c(0));
+output$S<- S0;
+output$L<- L0;
+output$I<- I0;
+output$R <- R0;
+output$DS <- 0*S0;
+output$DL <- 0*L0;
+output$DI <- 0*I0;
+output$DR <- 0*R0;
 
 
 #seed <- as.numeric(Sys.time())
-set.seed(1678980340)#(seed)
+set.seed(1678980340);#(seed)
 currun = 1;
 #timer
-start.time.overal <- Sys.time()
-timing.run<- c()
-#loop over number of runs
+start.time.overal <- Sys.time();
+timing.run<- c();
+#loop over number of runs ####
 while(currun <= runs){
   #initialize
-  output <- list(time = c(0), N = c(N0),C=c(0), run =c(1),dt = c(0))
-  output$S<- S0
-  output$L<- L0
-  output$I<- I0
-  output$R <- R0
-  output$DS <- 0*S0
-  output$DL <- 0*L0
-  output$DI <- 0*I0
-  output$DR <- 0*R0
+  output <- list(time = c(0), N = c(N0),C=c(0), run =c(1),dt = c(0));
+  output$S<- S0;
+  output$L<- L0;
+  output$I<- I0;
+  output$R <- R0;
+  output$DS <- 0*S0;
+  output$DL <- 0*L0;
+  output$DI <- 0*I0;
+  output$DR <- 0*R0;
   
-  start.time.run <- Sys.time()
+  start.time.run <- Sys.time();
   #set state of the system with initial values
-  state <- list(time = 0, N = N0,C=0, run = currun, dt = 0)
-  state$S<- S0
-  state$L<- L0
-  state$I<- I0
-  state$R <- R0
-  state$DS <- 0*S0
-  state$DL <- 0*L0
-  state$DI <- 0*I0
-  state$DR <- 0*R0
+  state <- list(time = 0, N = N0,C=0, run = currun, dt = 0);
+  state$S<- S0;
+  state$L<- L0;
+  state$I<- I0;
+  state$R <- R0;
+  state$DS <- 0*S0;
+  state$DL <- 0*L0;
+  state$DI <- 0*I0;
+  state$DR <- 0*R0;
   
   ids.initI =  if(sum(state$I) > 0){1:sum(state$I)} else 0;
   ids.initL = (sum(state$I)+1) : (sum(state$I)+sum(state$L));
-  ids.initS = c((sum(state$I)+sum(state$L)+1):(sum(state$S)+sum(state$I)+sum(state$L)))
+  ids.initS = c((sum(state$I)+sum(state$L)+1):(sum(state$S)+sum(state$I)+sum(state$L)));
   
   #individual states
   indiv.states <- rbind(if(sum(state$I)>0){data.frame(id = ids.initI,
@@ -150,13 +153,13 @@ while(currun <= runs){
                                    itype = c(unlist(mapply(rep, times = state$L, x= c(1:length(state$L)))))),
                          data.frame(id = ids.initS,
                                     state = "S",
-                                   itype = c(unlist(mapply(rep, times = state$S, x= c(1:length(state$S)))))))
+                                   itype = c(unlist(mapply(rep, times = state$S, x= c(1:length(state$S)))))));
   #die at recovery
   indiv.states$dieatrec <- FALSE;
   
   #debugging stuff
-  indiv.states$state.or <- indiv.states$state
-  indiv.states$itype.or <- indiv.states$itype
+  indiv.states$state.or <- indiv.states$state;
+  indiv.states$itype.or <- indiv.states$itype;
   
                                     
                         
@@ -171,11 +174,12 @@ while(currun <= runs){
   events <- rbind(events,data.frame(type = c("LI","IR"), 
                                     time = c(mapply(function(x,y){cumsum(c(x,y))},  c(mapply(dL,runif(sum(state$L)), indiv.states[indiv.states$state == "L",]$itype )),
                                                     c(mapply(dI,runif(sum(state$L)), indiv.states[indiv.states$state == "L",]$itype )))),
-                                    id = rep(ids.initL, each = 2)))
+                                    id = rep(ids.initL, each = 2)));
   
  
   #schedule mortality events for all animals 
-  events <- rbind(events,data.frame(type = c("M"), time = sapply(FUN = dLE, X = runif(state$N)),id = indiv.states$id))
+  events <- rbind(events,data.frame(type = c("M"), 
+                                    time = sapply(FUN = dLE, X = runif(state$N)),id = indiv.states$id));
   
   #schedule transition events for all animals
   for(i in c(1:itypes)){#type from which to transition
@@ -187,12 +191,12 @@ while(currun <= runs){
                                       id = indiv.states[indiv.states$state=="S" & indiv.states$itype == i,]$id))
      }
     }
-  }
+  };
   #remove events that will never happen
-  events <- filter(events,time != Inf)
-  events <- filter(events,time < max.time)
+  events <- filter(events,time != Inf);
+  events <- filter(events,time < max.time);
   #order events by time of execution
-  events <- events[order(events$time),]
+  events <- events[order(events$time),];
  
  
   
@@ -202,22 +206,22 @@ while(currun <= runs){
                         cumfoi = rep(0,sum(state$S)),
                         id = ids.initS,
                         infectiontime = Inf);
-  QIRtimes<- QIRtimes[order(QIRtimes$Q),]
+  QIRtimes<- QIRtimes[order(QIRtimes$Q),];
   
   
   
   #set initial values 
-  foi <- rep(0, itypes)  #force of infection
+  foi <- rep(0, itypes); #force of infection
   
   #counters for output/debugging not necessary for running the simulations
-  cLI <-  rep(0, itypes)  #counter for latent to infectious transitions
-  cIR <- rep(0, itypes)   #counter for infectious to recover transitions
-  cSL <- rep(0, itypes)  #counter for susceptible to latent transitions
-  cM <- rep(0, itypes)  #counter for mortality events
+  cLI <-  rep(0, itypes);  #counter for latent to infectious transitions
+  cIR <- rep(0, itypes);   #counter for infectious to recover transitions
+  cSL <- rep(0, itypes);  #counter for susceptible to latent transitions
+  cM <- rep(0, itypes);  #counter for mortality events
   
   #set manual 'handbreak' that prevents endless loops
   handbreak =0
-  while(length(events$time) > 0 & sum(state$L) + sum(state$I) > 0 & state$time < max.time)
+  while(length(events$time) > 0 & sum(state$L) + sum(state$I) > 0 & state$time < max.time);
   {
     handbreak = handbreak + 1
     if(handbreak > 5*N0){stop}
@@ -244,7 +248,7 @@ while(currun <= runs){
         print("stop")
       }
       
-    }
+    };
     #infectious to recovered
     if(first(events$type) == "IR" )
     {
@@ -276,7 +280,7 @@ while(currun <= runs){
         events<- subset(events, id != first(events$id))
       }
       
-    }
+    };
     #susceptible to infectious
     if(first(events$type) == "SL" )
     { 
@@ -304,7 +308,7 @@ while(currun <= runs){
       #set individual state
       indiv.states[first(events$id),]$state<- "L"
       
-    }
+    };
     #death
     if(first(events$type)== "M")
     {
@@ -337,11 +341,11 @@ while(currun <= runs){
       indiv.states[indiv.states$id == animalid,]$state = paste0("D",typeM); #set individual state to be dead in certain state
       state[typeM][[1]][itype] = state[typeM][[1]][itype] - 1; #remove one from the counters
       state[paste0("D",typeM)][[1]][itype] = state[paste0("D",typeM)][[1]][itype] + 1; #add one to the death counters
-    }
+    };
     
     if(min(state$L)<0){
       print("stop")
-    }
+    };
     
     #type transition event
     if(grepl("T",first(events$type)))
@@ -358,26 +362,26 @@ while(currun <= runs){
       }
       
       
-    }
+    };
     
     
     #order events by time of execution
-    events <- events[order(events$time),]
+    events <- events[order(events$time),];
     
     #set force-of-infection for each type
-    foi <- c(beta %*% state$I /state$N)
+    foi <- c(beta %*% state$I /state$N);
     
     #order events by time of execution
-    events <- events[order(events$time),]
+    events <- events[order(events$time),];
     
     
     #determine next infection event
     if(sum(state$S) * sum(state$I) > 0){
       QIRtimes$infectiontime <- state$time + (QIRtimes$Q - QIRtimes$cumfoi)/foi[indiv.states$itype[QIRtimes$id]]
-    } else {infection <- 10^10}
+    } else {infection <- 10^10};
     
     #remove first event
-    events <- events[-1,]
+    events <- events[-1,];
     
     #if this event is previous to other events schedule it
     if(length(events$time) > 0)
@@ -392,7 +396,7 @@ while(currun <= runs){
         #order events by time of execution
         events <- events[order(events$time),]
       }
-    }
+    };
     
     #record this moment
     output$time <- rbind(output$time, state$time);
@@ -411,13 +415,18 @@ while(currun <= runs){
     
   }
   #record output and parameters
-  saveRDS(list(out = output, pars = param.list),file = paste0("output/",format(Sys.Date(),"%Y%m%d"),"output_",scenario,"_",currun,".RDS"))
+  saveRDS(list(out = output, pars = param.list),
+          file = paste0("output/",format(Sys.Date(),"%Y%m%d"),"output_",scenario,"_",currun,".RDS"));
   
   #add on to the current run counter
-  currun <- currun +1
+  currun <- currun +1;
   #for debugging record time
   timing.run <-c(timing.run, Sys.time()-start.time.run)
-}; timing.overall <-Sys.time() - start.time.overal;
+  #return timing
+}
+#return timing
+return(timing.run)});
+}; 
 
 
 hist(timing.run)
