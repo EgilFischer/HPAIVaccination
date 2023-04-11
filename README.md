@@ -3,7 +3,7 @@
 Code for assessing the risk of zoonotic transmission towards humans after vaccination of poultry flocks
 
 # Code
--TechReport.RMD: R markdown file with explanation of methods and models
+- TechReport.RMD: R markdown file with explanation of methods and models
 - MultitypeSEIRsellke.R: Stochasttic multitype model SEIR 
 - MultitypetransitionsSEIRsellke.R: Stochasttic multitype model SEIR with transitions between types (currently used)
 - MultitypetransitionsSEIRsellke_simfunc.R: Stochasttic multitype model SEIR with transitions between types in a function form to speed up (under development)
