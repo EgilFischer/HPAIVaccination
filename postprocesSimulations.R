@@ -26,8 +26,8 @@ package.check <- lapply(
 #import simulations
 for(i in c(1:10)){
   
-  if(i == 1)output <- as.data.frame(readRDS(paste0("20230406outputbroiler1.RDS"))$out)
-  output <- rbind(output,as.data.frame(readRDS(paste0("20230406outputbroiler",i,".RDS"))$out))
+  if(i == 1)output <- as.data.frame(readRDS(paste0("20230407outputlayerT1001.RDS"))$out)
+  output <- rbind(output,as.data.frame(readRDS(paste0("20230407outputlayerT100",i,".RDS"))$out))
 }
 
 ##plot the output

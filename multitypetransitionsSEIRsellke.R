@@ -24,15 +24,15 @@ package.check <- lapply(
 )
 
 #scenario
-scenario <- "broiler";
+scenario <- "layerT100";
 
 #parameters####
 itypes <- 2;
 
 #these should be fitting to the number of types
-N0 <- 100
+N0 <- 25000
 #proportion initially protected by vaccination
-p.protect = 0.9;
+p.protect = .9 * exp(-0.038*100);
 initial<- 10 
 L0 <- round(c(1-p.protect,p.protect)*initial,digits = 0) #number of initially latently infected 
 I0 <- round(c(1-p.protect,p.protect)*0,digits = 0) #number of initially infectious
@@ -40,13 +40,13 @@ R0 <- c(0,0) # number of initially recoverd
 S0 <- round(c(1-p.protect,p.protect)*N0,digits = 0)-L0-I0-R0
 runs <-10; #number of runs
 N0 <- sum(S0+L0+I0+R0)
-max.time <- 42;
+max.time <- 17*30;
 #parameters
 #Type 1  = not protected by vaccination and type 2 = protected by vaccination
 #Use values for infectivity and infectious periods from Sitaris et al 2016 https://doi.org/10.1098/rsif.2015.0976
 beta <- matrix(c(3.73, 3.73,0.058,0.058),ncol = itypes) #transmission coefficient matrix for a 2x2 matrix (1 -> 1, 1->2, 2-> 1, 2-> 2)
 #choose very short latency period
-latency.period <- c(0.001,0.001);
+latency.period <- c(0.0001,0.0001);
 #Duration latency period as function of a random variable U
 dL <- function(U,itype){return(-log(1 - U)*latency.period[itype])} #exponential distribution
 
@@ -423,4 +423,5 @@ while(currun <= runs){
 
 hist(timing.run)
 print(timing.overall)
+
 
