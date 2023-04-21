@@ -24,15 +24,15 @@ package.check <- lapply(
 )
 
 #scenario
-scenario <- "layerT100";
+scenario <- "layerHighLowVac";
 
 #parameters####
 itypes <- 2;
 
 #these should be fitting to the number of types
-N0 <- 25000
+N0 <- 45000
 #proportion initially protected by vaccination
-p.protect = .9 * exp(-0.038*100);
+p.protect = 1 - 6/26;
 initial<- 10 
 L0 <- round(c(1-p.protect,p.protect)*initial,digits = 0) #number of initially latently infected 
 I0 <- round(c(1-p.protect,p.protect)*0,digits = 0) #number of initially infectious
@@ -44,26 +44,26 @@ max.time <- 17*30;
 #parameters
 #Type 1  = not protected by vaccination and type 2 = protected by vaccination
 #Use values for infectivity and infectious periods from Sitaris et al 2016 https://doi.org/10.1098/rsif.2015.0976
-beta <- matrix(c(3.73, 3.73,0.058,0.058),ncol = itypes) #transmission coefficient matrix for a 2x2 matrix (1 -> 1, 1->2, 2-> 1, 2-> 2)
+beta <- matrix(c(1.13, 1.13,0.05,0.05),ncol = itypes) #transmission coefficient matrix for a 2x2 matrix (1 -> 1, 1->2, 2-> 1, 2-> 2)
 #choose very short latency period
-latency.period <- c(0.0001,0.0001);
+latency.period <- c(0.00001,0.00001);
 #Duration latency period as function of a random variable U
 dL <- function(U,itype){return(-log(1 - U)*latency.period[itype])} #exponential distribution
 
 #Duration infectious period as function of a random variable U
-infectious.period <- c(1.47,1.47)
-variance.infectious.period <- c(1.47,1.47)^2
+infectious.period <- c(3.0,4.0)
+variance.infectious.period <- c(3.0,4.0)^2
 #Duration infectious period as function of a random variable U
 #dI <- function(U){return(-log(1 - U) * infectious.period)} #exponential function
 dI <- function(U,itype){return(qgamma(U, shape = infectious.period[itype]^2/variance.infectious.period[itype] , rate = infectious.period[itype]/variance.infectious.period[itype]))} #exponential function
 
 #transition rates should be of size itypes x itypes with 0 on diagonal
-transRate <- matrix(c(0,0.038,0.0,0), nrow = itypes) #value based on https://nvaidya.sdsu.edu/SIAP2015.pdf
+transRate <- matrix(c(0,0.012,0.0,0), nrow = itypes) #value based on https://nvaidya.sdsu.edu/SIAP2015.pdf
 dT <- function(U,itype1,itype2){return(-log(1 -U)/transRate[itype1,itype2])} #exponential function
 
 
 #probability of dying at end of infectious period
-pdie <- c(0.95,0.0)
+pdie <- c(0.01,0.01)
 
 #Mortality events
 mortRate <- 0.0005 #per capita death rate 
