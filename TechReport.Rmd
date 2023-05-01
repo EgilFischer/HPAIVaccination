@@ -126,16 +126,21 @@ for(i in c(1:10)){
       output.s1 <- as.data.frame(readRDS(paste0("20230406outputbroiler1.RDS"))$out)
       output.s2 <- as.data.frame(readRDS(paste0("20230407outputlayerT01.RDS"))$out)
       output.s3 <- as.data.frame(readRDS(paste0("20230407outputlayerT1001.RDS"))$out)
+      output.s4 <- as.data.frame(readRDS(paste0("20230420outputlayerHighLowVac1.RDS"))$out)
     }else{
   output.s1 <- rbind(output.s1,as.data.frame(readRDS(paste0("20230406outputbroiler",i,".RDS"))$out))
   output.s2 <- rbind(output.s2,as.data.frame(readRDS(paste0("20230407outputlayerT0",i,".RDS"))$out))
   output.s3 <- rbind(output.s3,as.data.frame(readRDS(paste0("20230407outputlayerT100",i,".RDS"))$out))
+  output.s4 <-  rbind(output.s4,as.data.frame(readRDS(paste0("20230420outputlayerHighLowVac",i,".RDS"))$out))
     }
 }
 output <- cbind(output.s1,data.frame(scenario = "Broiler"))
 output <- rbind(output,cbind(output.s2,data.frame(scenario = "Layer T0")))
 output <- rbind(output,cbind(output.s3,data.frame(scenario = "Layer T100")))
+output <- rbind(output,cbind(output.s4,data.frame(scenario = "High and Low Titer")))
 output$simulation <- "stochastic"
+
+ plot.output<- output
 #provide deterministic results
 
 
@@ -187,27 +192,32 @@ inits3 <- c(S.1 = floor((N0-L0)*(1-p.vaccinated)),
 
 
 #run the model ####
-ode.outs1 <- as.data.frame(ode(inits1,seq(0, 42, 0.1), SLIRtransmod, params))
-ode.outs1$run <- "d"
-ode.outs1$scenario<- "Broiler"
-ode.outs1$simulation <- "deterministic"
-ode.outs2 <- as.data.frame(ode(inits2,seq(0, 500, 0.1), SLIRtransmod, params))
-ode.outs2$run <- "d"
-ode.outs2$scenario<- "Layer T0"
-ode.outs2$simulation <- "deterministic"
-ode.outs3 <- as.data.frame(ode(inits3,seq(0, 250, 0.1), SLIRtransmod, params))
-ode.outs3$run <- "d"
-ode.outs3$scenario<- "Layer T100"
-ode.outs3$simulation <- "deterministic"
-plot.output<- rbind(rbind(rbind(output[names(ode.outs1)],ode.outs1),ode.outs2),ode.outs3)
-plot.output$scenario
+# ode.outs1 <- as.data.frame(ode(inits1,seq(0, 42, 0.1), SLIRtransmod, params))
+# ode.outs1$run <- "d"
+# ode.outs1$scenario<- "Broiler"
+# ode.outs1$simulation <- "deterministic"
+# ode.outs2 <- as.data.frame(ode(inits2,seq(0, 500, 0.1), SLIRtransmod, params))
+# ode.outs2$run <- "d"
+# ode.outs2$scenario<- "Layer T0"
+# ode.outs2$simulation <- "deterministic"
+# ode.outs3 <- as.data.frame(ode(inits3,seq(0, 250, 0.1), SLIRtransmod, params))
+# ode.outs3$run <- "d"
+# ode.outs3$scenario<- "Layer T100"
+# ode.outs3$simulation <- "deterministic"
+#ode.outs4 <- as.data.frame(ode(inits4,seq(0, 500, 0.1), SLIRtransmod, params))
+# ode.outs4$run <- "d"
+# ode.outs4$scenario<- "High and Low Titer"
+# ode.outs4$simulation <- "deterministic"
+# 
+# plot.output<- rbind(rbind(rbind(output[names(ode.outs1)],ode.outs1),ode.outs2),ode.outs3)
+
 ```
 ```{r echo = FALSE}
 ggplot(data = 
          data.frame(plot.output)%>%select(time, run,scenario,simulation,I.1,I.2)%>%reshape2::melt(id.vars = c("time","run","scenario","simulation"),value.name = "prevalence",variable.name=c("itype")))+
   geom_step(aes(x = time, y = log(prevalence),colour = simulation, group = run))+ylim(c(-1,NA))+xlim(c(0,125))+
   #ylab("#number of birds")+
-  facet_grid(scenario~itype, scales = c(y = "free"), labeller =)
+  facet_grid(scenario~itype, scales = c(y = "free"))
 
 ```
 
@@ -223,12 +233,12 @@ det.times.subseq <- data.frame(scenario =c(), run =c(), det.time =c())
 # add all death together
 output$D = output$DS.1 + output$DL.1+ output$DI.1 + output$DR.1+output$DS.2 + output$DL.2+ output$DI.2 + output$DR.2
 #
-for(i in c(1:3)){
+for(i in c(1:4)){
   for(j in c(1:10))  {
-    det.time<-detection.time.threshold.interval(times = output$time[output$scenario == i & output$run ==j],D = output$D[output$scenario == i & output$run ==j], time.interval = 2,0.005*c(75000,45000,45000)[i])
+    det.time<-detection.time.threshold.interval(times = output$time[output$scenario == i & output$run ==j],D = output$D[output$scenario == i & output$run ==j], time.interval = 2,0.005*c(75000,45000,45000,45000)[i])
     det.times.interval <- rbind(det.times,data.frame(scenario = i, run = j, det.time = det.time))
     
-    det.time<-detection.time.threshold.subsequent(times = output$time[output$scenario == i & output$run ==j],D = output$D[output$scenario == i & output$run ==j], time.interval = 1,n =2 , 0.005*c(75000,45000,45000)[i])
+    det.time<-detection.time.threshold.subsequent(times = output$time[output$scenario == i & output$run ==j],D = output$D[output$scenario == i & output$run ==j], time.interval = 1,n =2 , 0.005*c(75000,45000,45000,45000)[i])
     det.times.subseq <- rbind(det.times.subseq,data.frame(scenario = i, run = j, det.time = det.time))
   }
 }
