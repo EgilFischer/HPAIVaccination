@@ -32,12 +32,12 @@ itypes <- 2;
 #these should be fitting to the number of types
 N0 <- 45000
 #proportion initially protected by vaccination
-p.protect = 1 - 6/26;
+p.hightitre = 1 - 6/26;
 initial<- 10 
-L0 <- round(c(1-p.protect,p.protect)*initial,digits = 0) #number of initially latently infected 
-I0 <- round(c(1-p.protect,p.protect)*0,digits = 0) #number of initially infectious
+L0 <- round(c(1-p.hightitre,p.hightitre)*initial,digits = 0) #number of initially latently infected 
+I0 <- round(c(1-p.hightitre,p.hightitre)*0,digits = 0) #number of initially infectious
 R0 <- c(0,0) # number of initially recoverd
-S0 <- round(c(1-p.protect,p.protect)*N0,digits = 0)-L0-I0-R0
+S0 <- round(c(1-p.hightitre,p.hightitre)*N0,digits = 0)-L0-I0-R0
 runs <-10; #number of runs
 N0 <- sum(S0+L0+I0+R0)
 max.time <- 17*30;
@@ -73,7 +73,7 @@ dLE <- function(U){return(-log(1 -U)/mortRate)} #life expectancy as function of 
 param.list <- list(
   itypes = itypes,
   N0=  N0,
-  p.protect = p.protect,
+  p.hightitre = p.hightitre,
   initial = initial,
   L0 = L0,
   I0 = I0,

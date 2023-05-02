@@ -389,6 +389,6 @@ sim.multitypeSEIR <- function(param.list,init, functions, seed = NULL)
 
 
 
-output <- sim.multitypeSEIR(param.list, inits, functions)$dL
-
+output <- sim.multitypeSEIR(param.list, inits, functions)
+output
 

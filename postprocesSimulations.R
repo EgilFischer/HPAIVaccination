@@ -31,20 +31,16 @@
 # }
 # 
 # ##plot the output
-# ggplot(data = 
-#          data.frame(output)%>%select(time, run,I.1,I.2)%>%reshape2::melt(id.vars = c("time","run"),value.name = "prevalence",variable.name=c("itype")))+
-#   #geom_path(aes(x = time, y = S.1, group = run), color = "magenta", linetype = 1)+
-#   #geom_path(aes(x = time, y = S.2, group = run), color = "magenta", linetype = 2)+
-#   # geom_step(aes(x = time, y = L.1, group = run), color = "blue", linetype = 1)+
-#   # geom_step(aes(x = time, y = L.2, group = run), color = "blue", linetype = 2)+
-#   geom_step(aes(x = time, y = prevalence,colour = itype))+
-#   #geom_step(aes(x = time, y = I.2, group = run), color = "red", linetype = 2)+
-#   #geom_step(aes(x = time, y = R.1, group = run), color = "darkgreen")+
-#   # geom_step(aes(x = time, y = R.2, group = run), color = "darkgreen", linetype = 2)+
-#   # geom_step(aes(x = time, y = DS.1 + DL.1 +DI.1+DR.1, group = run), color = "black")+
-#   # geom_step(aes(x = time, y = DS.2 + DL.2 +DI.2+DR.2, group = run), color = "black", linetype = 2)+
-#   ylab("#number of birds")+facet_grid(.~itype, scales = "free")
-# 
+plot.output <- function(output,vars,title = NULL ){
+  ggplot(data =
+           data.frame(output)%>%select(time, run,vars)%>%reshape2::melt(id.vars = c("time","run"),value.name = "prevalence",variable.name=c("itype")))+
+        geom_step(aes(x = time, y = prevalence,colour = itype))+
+      ylab("#number of birds")+facet_grid(.~itype, scales = "free")+ggtitle(title)
+  
+}
+plot.output(output.baseline.broiler,c("S.1","S.2","I.1","I.2","R.1","R.2"), "Broiler base line")
+plot.output(output.baseline.broiler,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Broiler base line")
+
 # 
 # #human exposure ####
 # #Assumption of exposure is that the rate at which humans get exposed to infection is proportionate to the infectivity towards chickens
@@ -79,7 +75,7 @@ detection.time.threshold.interval <- function(times,Deaths, time.interval,thresh
   
 }
 
-detection.time.threshold.subsequent <- function(times,Deaths, time.interval, n, threshold){
+detection.time.threshold.subsequent <- function(times,Deaths, time.interval, threshold,n){
   #determine the number of deaths at the end of the interval
   Dinterval <- data.frame(t(sapply(FUN = function(t){c(time = t,deaths = max(Deaths[times < t]))}, X = seq(1, ceiling(max(times)),time.interval))));
   #define the increment during the interval
@@ -91,6 +87,41 @@ detection.time.threshold.subsequent <- function(times,Deaths, time.interval, n, 
   index <- which(diff(Dinterval$exceed == 1, 2) == -2)
   return(min(Dinterval$time[index], max(Dinterval$time)));
   
+}
+
+
+detection.times <- function(output,vars, detection.function,time.interval, threshold, ...)
+{
+  detection.times <- data.frame(run =c(), det.time =c())
+  for(i in c(1:max(output$run)))
+  {
+    tmp <- output%>%filter(run == i)%>%select("time", vars)%>%rowwise()%>%reframe(time = time,
+                                                                      prevalence = rowSums(.[vars]))
+    if(exists("detection.times")){
+      detection.times <- rbind(detection.times, data.frame(run = i, det.time = detection.function(tmp$times, tmp$prevalence,time.interval,threshold,...)))}
+      else{
+      detection.times <- data.frame(run = i, det.time = detection.function(tmp$times, tmp$prevalence,time.interval,threshold,...))
+    }
+    
+  }
+  return(detection.times)
+}
+
+detection.times(output.baseline.broiler,c("DR.1","DR.2") ,detection.time.threshold.subsequent,1,0.005*75, n= 2)
+
+det.times.interval <- data.frame(scenario =c(), run =c(), det.time =c())
+det.times.subseq <- data.frame(scenario =c(), run =c(), det.time =c())
+# add all death together
+output$D = output$DS.1 + output$DL.1+ output$DI.1 + output$DR.1+output$DS.2 + output$DL.2+ output$DI.2 + output$DR.2
+#
+for(i in c(1:4)){
+  for(j in c(1:10))  {
+    det.time<-detection.time.threshold.interval(times = output$time[output$scenario == i & output$run ==j],D = output$D[output$scenario == i & output$run ==j], time.interval = 2,0.005*c(75000,45000,45000,45000)[i])
+    det.times.interval <- rbind(det.times,data.frame(scenario = i, run = j, det.time = det.time))
+    
+    det.time<-detection.time.threshold.subsequent(times = output$time[output$scenario == i & output$run ==j],D = output$D[output$scenario == i & output$run ==j], time.interval = 1,n =2 , 0.005*c(75000,45000,45000,45000)[i])
+    det.times.subseq <- rbind(det.times.subseq,data.frame(scenario = i, run = j, det.time = det.time))
+  }
 }
 
 
