@@ -32,7 +32,22 @@ model <- function(u, param.list) {with((param.list),
   return(c(f1 =-u[1] + (gamma[1] + mu + beta[1,1]* (N[1]/(N[1] +N[2]) )* u[1]^2 + beta[2,1]* (N[2] /(N[1] + N[2]))* u[1]* u[2])/(gamma[1]+ mu + beta[1,1]* (N[1]/(N[1] + N[2]))+ beta[2,1]* N[2] /(N[1] + N[2])),
                        f2 = -u[2] + (gamma[2] + mu + beta[1,2]* (N[1]/(N[1] +N[2]) )* u[1] * u[2] + beta[2,2]* (N[2] /(N[1] + N[2]))* u[2]^2)/(gamma[2]+ mu + beta[1,2]* (N[1]/(N[1] + N[2]))+ beta[2,2]* N[2] /(N[1] + N[2])))))}
 
+Rmodel <- function(param.list, p){with(param.list,
+  { N <- c(1-p,p)*N0;
+    return(0.5*(beta[1,1]*(N[1]/(N[1]+N[2]))/(gamma[1]+mu) + 
+                  beta[2,2]*(N[2]/(N[1]+N[2])) /(gamma[2]+mu) + 
+                  sqrt((beta[2,2]*(N[2]/(N[1]+N[2]))/(gamma[2]+mu) - beta[1,1]*(N[1]/(N[1]+N[2]))/(gamma[1]+mu))^2 + 
+                       4 * (beta[1,2]*(N[2]/(N[1]+N[2]))*beta[2,1]*(N[1]/(N[1]+N[2])))/((gamma[2]+mu)*(gamma[1]+mu)))))
+  })}
 
+q1q2 <- function(param.list){
+  dat<- data.frame(t(sapply(FUN = function(p){c(p,multiroot(f = model, start = c(.01,.1),
+                                                      rtol = 1E-15,
+                                                      parms = c(param.list,N = list(param.list$N0*c(1-p,p))))$root)}, X = seq(0,1,.01))))
+  dat$Rv <- sapply(FUN = Rmodel, param.list = param.list,X = seq(0,1,.01) )
+  names(dat)<- c("p","q1","q2","Rv");
+  return(dat)
+}
 
 # q1q2 <- data.frame(t(sapply(FUN = function(p){c(p,multiroot(f = model, start = c(.01,
 #                                                                                 0.1),

@@ -72,11 +72,14 @@ sim.multitypeSIR <- function(param.list,init, functions, seed = NULL)
   output$DR <- 0*R0
   currun = 1;
   
+  #create output folder for this scenario if it does not yet exists
+  path <- paste0("./output/",scenario);
+  if(!file.exists(path)){dir.create(path)}
   
   #loop over number of runs
   while(currun <= runs){
     #initialize
-    output <- list(time = c(0), N = c(N0),C=c(0), run =c(1),dt = c(0))
+    output <- list(time = c(0), N = c(N0),C=c(0), run =c(currun),dt = c(0))
     output$S<- S0
     output$I<- I0
     output$R <- R0
@@ -339,7 +342,8 @@ sim.multitypeSIR <- function(param.list,init, functions, seed = NULL)
     }
     #record output and parameters
     op <- list(out = output, pars = param.list)
-    saveRDS(op, file = paste0("output/",format(Sys.Date(),"%Y%m%d"),scenario,"",currun,".RDS"))
+    
+    saveRDS(op, file = paste0(path,"/",format(Sys.Date(),"%Y%m%d"),scenario,"",currun,".RDS"))
     if(exists("all.output")){all.output <- rbind(all.output,data.frame(output))}else{all.output <- data.frame(output)}
     #add on to the current run counter
     currun <- currun +1
