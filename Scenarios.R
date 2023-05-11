@@ -57,7 +57,7 @@ param.list.60percHighTitreNoWaning.layer$p.hightitre <- 0.6;
 param.list.60percHighTitreNoWaning.layer$transRate <- matrix(c(0,0.0,0.0,0), nrow = itypes);
 
 
-# 60% high titre parameters no waning for broiler flock ####
+# 60% high titre parameters low waning for broiler flock ####
 param.list.60percHighTitreLowWaning.layer <- param.list.baseline.layer;
 param.list.60percHighTitreLowWaning.layer$scenario <- "HighTitre60percNoWaning_layer";
 param.list.60percHighTitreLowWaning.layer$p.hightitre <- 0.6;
@@ -96,29 +96,37 @@ output.60percHighTitre.layer <- load.sims("./output/HighTitre60perc_layer", inte
 output.60percHighTitreLowWaning.layer <- load.sims("./output/HighTitre60percLowWaning_layer", interval = 0.1)
 output.60percHighTitreNoWaning.layer <- load.sims("./output/HighTitre60percNoWaning_layer", interval = 0.1)
 
+#remove error in runs
+output.baseline.layer[which(output.baseline.layer$time == 0 & output.baseline.layer$N == 45000, arr.ind = TRUE),"run"]<- c(1:41)
+output.baseline.layer <- output.baseline.layer%>%filter(run!=41);
+output.60percHighTitre.layer[which(output.60percHighTitre.layer$time == 0 & output.60percHighTitre.layer$N == 45000, arr.ind = TRUE),"run"]<- c(1:10)
+output.60percHighTitreLowWaning.layer[which(output.60percHighTitreLowWaning.layer$time == 0 & output.60percHighTitreLowWaning.layer$N == 45000, arr.ind = TRUE),"run"]<- c(1:40)
+output.60percHighTitreNoWaning.layer[which(output.60percHighTitreNoWaning.layer$time == 0 & output.60percHighTitreNoWaning.layer$N == 45000, arr.ind = TRUE),"run"]<- c(1:11)
+output.60percHighTitreNoWaning.layer <- output.60percHighTitreNoWaning.layer%>%filter(run!=11);
+
 #visualize
 plot.output(output.baseline.layer,c("I.1","I.2","R.1","R.2"), "Layer base line")
 ggsave("./output/figures/baselinelayer.png")
-plot.output.sparse(output.baseline.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer base line",.05)
+plot.output(output.baseline.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer base line")
 ggsave("./output/figures/baselinelayerdeaths.png")
 gc()
-plot.output.sparse(output.60percHighTitre.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre",0.05)
+plot.output(output.60percHighTitre.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre")
 ggsave("./output/figures/HighTitre60preclayer.png")
-plot.output.sparse(output.60percHighTitre.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre",0.05)
+plot.output(output.60percHighTitre.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre")
 ggsave("./output/figures/HighTitre60preclayerdeaths.png")
 gc()
-plot.output.sparse(output.60percHighTitreLowWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre / high waning",0.1)
+plot.output(output.60percHighTitreLowWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre / high waning")
 ggsave("./output/figures/HighTitre60precLowWaninglayer.png")
-plot.output.sparse(output.60percHighTitreLowWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre / high waning",0.1)
+plot.output(output.60percHighTitreLowWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre / high waning")
 ggsave("./output/figures/HighTitre60precLowWaninglayerdeaths.png")
 gc()
-plot.output.sparse(output.60percHighTitreNoWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre / no waning",.1)
+plot.output(output.60percHighTitreNoWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre / no waning")
 ggsave("./output/figures/HighTitre60preclayerNoWaning.png")
-plot.output.sparse(output.60percHighTitreNoWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre / no waning",)
+plot.output(output.60percHighTitreNoWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre / no waning")
 ggsave("./output/figures/HighTitre60preclayerNoWaningdeaths.png")
 gc()
 
-#detection times
+#detection times by passive surveillance
 det.times <- detection.times(output.baseline.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2") ,detection.time.threshold.subsequent,1,0.005*45000, n= 2)
 det.times <- cbind(det.times,detection.times(output.60percHighTitre.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2") ,detection.time.threshold.subsequent,1,0.005*45000, n= 2)$det.time)
 det.times <- cbind(det.times,detection.times(output.60percHighTitreNoWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2") ,detection.time.threshold.subsequent,1,0.005*45000, n= 2)$det.time)
@@ -127,7 +135,7 @@ names(det.times)<- c("run","baseline","60HighTitre","60HighTitreNoWaning","60Hig
 det.times
 
 #surveillance
-surveillance.baseline.layer <-detection.times.surveillance(output.baseline.layer, c("DR.1","DR.2"),time.interval = 1,ints = 2,threshold = 0.005*45000,c("DR.1","DR.2"), pfarm = 1., panimal = .001,se = 0.9);
+surveillance.baseline.layer <-detection.times.surveillance(output.baseline.layer, c("DR.1","DR.2"),time.interval = 1,ints = 2,threshold = 0.005*45000,c("DR.1","DR.2"), pfarm = 1., panimal = .001,se = 0.9,Detectables.incidence = TRUE);
 for(i in c(2:10)){
   surveillance.baseline.layer <- rbind(surveillance.baseline.layer,detection.times.surveillance(output.baseline.layer, c("DR.1","DR.2"),time.interval = 1,ints = 2,threshold = 0.005*45000,c("DR.1","DR.2"), pfarm = 0.1, panimal = .001,se = 0.95))
 }
@@ -176,7 +184,7 @@ plot.humanexposure$totdet <- sapply(str_split(plot.humanexposure$variable, patte
 ggplot(data = plot.humanexposure)+geom_histogram(aes(value, fill = scenario ))+
   facet_grid(scenario~totdet)+ggtitle("Cumulative human exposure Layers")
 
-#Broilers#
+#Broilers####
 #Baseline parameters for broiler flock ####
 param.list.baseline.broiler <- list(
   scenario = "baseline_broiler", #scenario

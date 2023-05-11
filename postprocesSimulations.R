@@ -37,20 +37,23 @@ load.sims <- function(path, interval = NULL){
   
   if(is.null(interval)){
   output <- as.data.frame(readRDS(paste0(path,"/",sims[1]))$out)
-   for(i in tail(sims,-1)){
-        output <- rbind(output,as.data.frame(readRDS(paste0(path,"/",i))$out))
+   for(i in sims){
+     if(!exists("output"))
+        {output <-as.data.frame(readRDS(paste0(path,"/",i))$out)}else
+        {output <- rbind(output,as.data.frame(readRDS(paste0(path,"/",i))$out))}
         }}else #merge into intervals
         {
           tmp <- as.data.frame(readRDS(paste0(path,"/",sims[1]))$out);
           tmp$interval.index <- tmp$time%/%interval;
           tmp$tround <- interval*(tmp$interval.index+sign(tmp$time))
           output <- tmp%>%group_by(tround)%>%slice(n())%>%ungroup
-          for(i in tail(sims,-1)){
+          for(i in sims){
             tmp <- as.data.frame(readRDS(paste0(path,"/",i))$out);
             tmp$interval.index <- tmp$time%/%interval;
             tmp$tround <- interval*(tmp$interval.index+sign(tmp$time))
             tmp <- tmp%>%group_by(tround)%>%slice(n())%>%ungroup
-            output <- rbind(output,tmp)
+            if(!exists("output")) {output <-tmp}else{ 
+            output <- rbind(output,tmp)}
           }
         }
   return(output)
@@ -179,17 +182,39 @@ detection.times.surveillance <- function(output,  #output
                                       se, #sensitivity of test per type of detectable animal,
                                       seed = NULL,
                                       roundTime = TRUE,
+                                      Detectables.incidence = FALSE, #either a boolean or vector of length Detectables.vars with booleans indicating whether the values need to be transformed to incidence data. 
                                       ...
 ){
   
-  tmp.output <-data.frame(output%>%select("time","run", Deaths.vars)%>%reframe(times = time,
-                                                                               run = run,                                                                    
-                                                                               deaths = rowSums(.[Deaths.vars])));
+  tmp.output <-output%>%select("time","run", Deaths.vars)%>%reframe(run = run,
+                                                                    times =time,
+                                                                    deaths = rowSums(.[Deaths.vars]));
   tmp.output <-cbind(tmp.output, output%>%select(Detectables.vars))
+  
+  
   for(i in c(1:max(output$run)))
   {
-    
+    #temporary values of this run
     tmp <- tmp.output%>%filter(run ==i)
+    #if transform to incidence is required 
+   if(Detectables.incidence ==TRUE || length(Detectables.incidence)>1)
+   {
+    #allowing just to say true to all values
+    if(length(Detectables.incidence)==1) {Detectables.incidence = rep(TRUE,length(Detectables.vars))}
+    #transform those that require transform
+    for(i in c(1:length(Detectables.incidence)))
+    {
+      #transform this particular value
+      if(Detectables.incidence[i]){
+        #transform output
+        
+        tmp[,Detectables.vars[i]] <-unlist(c(0, unlist(tail(tmp[,Detectables.vars[i]],-1) -  head(tmp[,Detectables.vars[i]],-1))))
+        
+      }
+    }
+  }
+  
+    
     
     if(exists("detection.times.output")){
       detection.times.output <- rbind(detection.times.output,data.frame(run = i, detection.time.surveillance(tmp$times, tmp$deaths,time.interval,ints,threshold,as.matrix(tmp[,Detectables.vars]),pfarm,panimal, se, seed, roundTime, ...)))}

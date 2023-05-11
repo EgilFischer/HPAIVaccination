@@ -344,7 +344,7 @@ sim.multitypeSIR <- function(param.list,init, functions, seed = NULL)
     op <- list(out = output, pars = param.list)
     
     saveRDS(op, file = paste0(path,"/",format(Sys.Date(),"%Y%m%d"),scenario,"",currun,".RDS"))
-    if(exists("all.output")){all.output <- rbind(all.output,data.frame(output))}else{all.output <- data.frame(output)}
+    #if(exists("all.output")){all.output <- rbind(all.output,data.frame(output))}else{all.output <- data.frame(output)}
     #add on to the current run counter
     currun <- currun +1
     
