@@ -1,5 +1,6 @@
-library(readr)
-library(ggplot2)
+#load libraries
+source("loadLibraries.R") 
+
 TiterWaning <- read_csv("TiterWaning.csv")
 TiterWaning <- reshape2::melt(TiterWaning,id.vars = c("Time"))
 mod <- lm(value ~ Time * variable, data = TiterWaning)

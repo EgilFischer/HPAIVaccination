@@ -6,57 +6,37 @@
 #                  Contact: e.a.j.fischer@uu.nl                             
 #                  Creation date: 28-3-2023                         
 #########################################################
-# 
-# 
-# #include libraries ####
-# packages <- c("ggplot2","dplyr","tidyverse")
-# 
-# 
-# ## Now load or install&load all
-# package.check <- lapply(
-#   packages,
-#   FUN = function(x) {
-#     if (!require(x, character.only = TRUE)) {
-#       install.packages(x, dependencies = TRUE)
-#       library(x, character.only = TRUE)
-#     }
-#   }
-# )
-# 
-# #import simulations
-# for(i in c(1:10)){
-#   
-#   if(i == 1)output <- as.data.frame(readRDS(paste0("20230407outputlayerT1001.RDS"))$out)
-#   output <- rbind(output,as.data.frame(readRDS(paste0("20230407outputlayerT100",i,".RDS"))$out))
-# }
-# 
+
+source("loadLibraries.R") 
 
 #load simulations
-load.sims <- function(path, interval = NULL){
+load.sims <- function(path, interval = NULL, params = FALSE){
   sims <- list.files(path, pattern = ".RDS");if(length(sims) == 0) stop("No simulations in this folder");
   
-  if(is.null(interval)){
-  output <- as.data.frame(readRDS(paste0(path,"/",sims[1]))$out)
+  #if(is.null(interval)){
+  #output <- as.data.frame(readRDS(paste0(path,"/",sims[1]))$out)
    for(i in sims){
+     if(is.null(interval)){
      if(!exists("output"))
-        {output <-as.data.frame(readRDS(paste0(path,"/",i))$out)}else
-        {output <- rbind(output,as.data.frame(readRDS(paste0(path,"/",i))$out))}
-        }}else #merge into intervals
+        {tmp.output <-as.data.frame(readRDS(paste0(path,"/",i))$out)}else
         {
-          tmp <- as.data.frame(readRDS(paste0(path,"/",sims[1]))$out);
+          tmp.output <- rbind(tmp.output,as.data.frame(readRDS(paste0(path,"/",i))$out))}
+        }else #merge into intervals
+        {
+          tmp <- as.data.frame(readRDS(paste0(path,"/",i))$out);
           tmp$interval.index <- tmp$time%/%interval;
           tmp$tround <- interval*(tmp$interval.index+sign(tmp$time))
-          output <- tmp%>%group_by(tround)%>%slice(n())%>%ungroup
-          for(i in sims){
-            tmp <- as.data.frame(readRDS(paste0(path,"/",i))$out);
-            tmp$interval.index <- tmp$time%/%interval;
-            tmp$tround <- interval*(tmp$interval.index+sign(tmp$time))
-            tmp <- tmp%>%group_by(tround)%>%slice(n())%>%ungroup
-            if(!exists("output")) {output <-tmp}else{ 
-            output <- rbind(output,tmp)}
-          }
+          tmp <- tmp%>%group_by(tround)%>%slice(n())%>%ungroup
+            if(!exists("tmp.output")) {
+              tmp.output <-tmp
+              }else{ 
+                tmp.output <- rbind(tmp.output,tmp)
+            }
+          
         }
-  return(output)
+     if(params){if(!exists("param_lists")){param_lists <- NULL;param_lists[[1]] <- readRDS(paste0(path,"/",i))$pars}else{param_lists[[length(param_lists)+1]]<- readRDS(paste0(path,"/",i))$pars}}
+   }
+  return(list(output = tmp.output,pars = if(params){param_lists}else{NULL}))
 }
 
 
@@ -163,15 +143,15 @@ detection.time.surveillance <- function(times,  #vector with times
   if(pfarm < runif(1)){return(data.frame(pas.det.time,ac.det.time = Inf, min.det.time = min(pas.det.time,Inf), ac.succes = FALSE))};
   
   #determine detection time by active surveillance
-  ac.det.time <- first(times[rowSums(apply(Dets, c(1,2), function(x){rbinom(x,n =1, p = se*panimal)}))>1]);
+  ac.det.time <- first(times[rowSums(apply(Detectables, c(1,2), function(x){rbinom(x,n =1, p = se*panimal)}))>1]);
   if(roundTime)ac.det.time <- round(ac.det.time/time.interval)*time.interval;
   #return
   tmp.det <- data.frame(pas.det.time,ac.det.time, min.det.time = min(pas.det.time,ac.det.time), ac.succes = pas.det.time>ac.det.time);
   return(tmp.det)
 }
 
-#detection.time.surveillance 
-detection.times.surveillance <- function(output,  #output
+#detection.time.surveillance both active and passive 1 simulation
+detection.times.surveillance.single <- function(output,  #output
                                       Deaths.vars,  #vector with dead animals
                                       time.interval,  #time interval for passive detection
                                       ints,  #number of days with subsequent increased mortality
@@ -224,6 +204,43 @@ detection.times.surveillance <- function(output,  #output
     
   }
   return(detection.times.output)
+}
+
+
+#detection.time.surveillance both active and passive 1 simulation
+detection.times.surveillance <- function(output,  #output
+                                         Deaths.vars,  #vector with dead animals
+                                         time.interval,  #time interval for passive detection
+                                         ints,  #number of days with subsequent increased mortality
+                                         threshold,  #threshold for passive detection
+                                         Detectables.vars, #matrix with size length(times) and groups of detectable animals
+                                         pfarm, #probability that this farm is being monitored
+                                         panimal, #probability per detectable animal to being monitored,
+                                         se, #sensitivity of test per type of detectable animal,
+                                         seed = NULL,
+                                         roundTime = TRUE,
+                                         Detectables.incidence = FALSE, #either a boolean or vector of length Detectables.vars with booleans indicating whether the values need to be transformed to incidence data. 
+                                         reps = 1, #default one repetiton
+                                         ...
+){
+  for(i in c(1:reps)){
+    detection.tmp <-detection.times.surveillance.single(output,  #output
+                                                 Deaths.vars,  #vector with dead animals
+                                                 time.interval,  #time interval for passive detection
+                                                 ints,  #number of days with subsequent increased mortality
+                                                 threshold,  #threshold for passive detection
+                                                 Detectables.vars, #matrix with size length(times) and groups of detectable animals
+                                                 pfarm, #probability that this farm is being monitored
+                                                 panimal, #probability per detectable animal to being monitored,
+                                                 se, #sensitivity of test per type of detectable animal,
+                                                 seed = NULL,
+                                                 roundTime = TRUE,
+                                                 Detectables.incidence = FALSE,
+                                                 ...);
+    if(!exists("sout.tmp")){sout.tmp <- cbind(detection.tmp,data.frame(rep = i))}
+    else{sout.tmp<- rbind(sout.tmp,cbind(detection.tmp,data.frame(rep = i)))};
+  }
+  return(sout.tmp)
 }
 
 # det.times.interval <- data.frame(scenario =c(), run =c(), det.time =c())

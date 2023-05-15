@@ -8,20 +8,9 @@
 #                  Creation date:   16-2-2023                         
 #########################################################
 
-#include libraries ####
-packages <- c("ggplot2","dplyr","tidyverse")
+#load libraries
+source("loadLibraries.R") 
 
-
-## Now load or install&load all
-package.check <- lapply(
-  packages,
-  FUN = function(x) {
-    if (!require(x, character.only = TRUE)) {
-      install.packages(x, dependencies = TRUE)
-      library(x, character.only = TRUE)
-    }
-  }
-)
 
 #define number of types
 itypes = 2;

@@ -8,23 +8,8 @@
 #                  Creation date: 4-4-2023                         
 #########################################################
 
-#include libraries ####
-packages <- c("ggplot2",
-              #"dplyr",
-              #"tidyverse",
-              "rootSolve")
-
-
-## Now load or install&load all
-package.check <- lapply(
-  packages,
-  FUN = function(x) {
-    if (!require(x, character.only = TRUE)) {
-      install.packages(x, dependencies = TRUE)
-      library(x, character.only = TRUE)
-    }
-  }
-)
+#load libraries
+source("loadLibraries.R") 
 
 
 #probability generating functions q1, q2 for offspring of type 1 or  2, given ultimate extinction e.g. I1(\[Infinity]) = 0;  I2(\[Infinity]) =0

@@ -7,20 +7,8 @@
 #                  Creation date: 2-5-2023                         
 #########################################################
 
-#include libraries ####
-packages <- c("ggplot2","dplyr","tidyverse")
-
-
-## Now load or install&load all
-package.check <- lapply(
-  packages,
-  FUN = function(x) {
-    if (!require(x, character.only = TRUE)) {
-      install.packages(x, dependencies = TRUE)
-      library(x, character.only = TRUE)
-    }
-  }
-)
+#load libraries
+source("loadLibraries.R") 
 
 #define number of types
 itypes = 2;
@@ -91,10 +79,10 @@ output.60percHighTitre.layer <- simulate.multitypeSIR(param.list.60percHighTitre
 output.60percHighTitreNoWaning.layer <- simulate.multitypeSIR(param.list.60percHighTitreNoWaning.layer)
 
 #load simulations
-output.baseline.layer <- load.sims("./output/baseline_layer", interval = 0.1)
-output.60percHighTitre.layer <- load.sims("./output/HighTitre60perc_layer", interval = 0.1)
-output.60percHighTitreLowWaning.layer <- load.sims("./output/HighTitre60percLowWaning_layer", interval = 0.1)
-output.60percHighTitreNoWaning.layer <- load.sims("./output/HighTitre60percNoWaning_layer", interval = 0.1)
+output.baseline.layer <- load.sims("./output/baseline_layer", interval = 0.1)$output
+output.60percHighTitre.layer <- load.sims("./output/HighTitre60perc_layer", interval = 0.1)$output
+output.60percHighTitreLowWaning.layer <- load.sims("./output/HighTitre60percLowWaning_layer", interval = 0.1)$output
+output.60percHighTitreNoWaning.layer <- load.sims("./output/HighTitre60percNoWaning_layer", interval = 0.1)$output
 
 #remove error in runs
 output.baseline.layer[which(output.baseline.layer$time == 0 & output.baseline.layer$N == 45000, arr.ind = TRUE),"run"]<- c(1:41)
@@ -104,27 +92,27 @@ output.60percHighTitreLowWaning.layer[which(output.60percHighTitreLowWaning.laye
 output.60percHighTitreNoWaning.layer[which(output.60percHighTitreNoWaning.layer$time == 0 & output.60percHighTitreNoWaning.layer$N == 45000, arr.ind = TRUE),"run"]<- c(1:11)
 output.60percHighTitreNoWaning.layer <- output.60percHighTitreNoWaning.layer%>%filter(run!=11);
 
-#visualize
-plot.output(output.baseline.layer,c("I.1","I.2","R.1","R.2"), "Layer base line")
-ggsave("./output/figures/baselinelayer.png")
-plot.output(output.baseline.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer base line")
-ggsave("./output/figures/baselinelayerdeaths.png")
-gc()
-plot.output(output.60percHighTitre.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre")
-ggsave("./output/figures/HighTitre60preclayer.png")
-plot.output(output.60percHighTitre.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre")
-ggsave("./output/figures/HighTitre60preclayerdeaths.png")
-gc()
-plot.output(output.60percHighTitreLowWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre / high waning")
-ggsave("./output/figures/HighTitre60precLowWaninglayer.png")
-plot.output(output.60percHighTitreLowWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre / high waning")
-ggsave("./output/figures/HighTitre60precLowWaninglayerdeaths.png")
-gc()
-plot.output(output.60percHighTitreNoWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre / no waning")
-ggsave("./output/figures/HighTitre60preclayerNoWaning.png")
-plot.output(output.60percHighTitreNoWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre / no waning")
-ggsave("./output/figures/HighTitre60preclayerNoWaningdeaths.png")
-gc()
+# #visualize
+# plot.output(output.baseline.layer,c("I.1","I.2","R.1","R.2"), "Layer base line")
+# ggsave("./output/figures/baselinelayer.png")
+# plot.output(output.baseline.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer base line")
+# ggsave("./output/figures/baselinelayerdeaths.png")
+# gc()
+# plot.output(output.60percHighTitre.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre")
+# ggsave("./output/figures/HighTitre60preclayer.png")
+# plot.output(output.60percHighTitre.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre")
+# ggsave("./output/figures/HighTitre60preclayerdeaths.png")
+# gc()
+# plot.output(output.60percHighTitreLowWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre / high waning")
+# ggsave("./output/figures/HighTitre60precLowWaninglayer.png")
+# plot.output(output.60percHighTitreLowWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre / high waning")
+# ggsave("./output/figures/HighTitre60precLowWaninglayerdeaths.png")
+# gc()
+# plot.output(output.60percHighTitreNoWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre / no waning")
+# ggsave("./output/figures/HighTitre60preclayerNoWaning.png")
+# plot.output(output.60percHighTitreNoWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre / no waning")
+# ggsave("./output/figures/HighTitre60preclayerNoWaningdeaths.png")
+# gc()
 
 #detection times by passive surveillance
 det.times <- detection.times(output.baseline.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2") ,detection.time.threshold.subsequent,1,0.005*45000, n= 2)
@@ -150,13 +138,13 @@ ggplot(surveillance.60percHighTitreNoWaning.layer)+geom_histogram(aes(ac.det.tim
 sum(surveillance.60percHighTitreNoWaning.layer$ac.succes)/length(surveillance.60percHighTitreNoWaning.layer$ac.succes)
 
 #human exposure
-humanexposure <- human.exposure.total.multiple.runs(output.baseline.layer,param.list.baseline.layer$beta,det.times$baseline)
+humanexposure <- human.exposure.total.multiple.runs(output.baseline.layer,pars.list.baseline.layer$beta,det.times$baseline)
 humanexposure <- cbind(humanexposure, 
-                       human.exposure.total.multiple.runs(output.60percHighTitre.layer,param.list.60percHighTitre.layer$beta,det.times$'60HighTitre'))
+                       human.exposure.total.multiple.runs(output.60percHighTitre.layer,pars.list.60percHighTitre.layer$beta,det.times$'60HighTitre'))
 humanexposure <- cbind(humanexposure, 
-                       human.exposure.total.multiple.runs(output.60percHighTitreNoWaning.layer,param.list.60percHighTitreNoWaning.layer$beta,det.times$'60HighTitreNoWaning'))
+                       human.exposure.total.multiple.runs(output.60percHighTitreNoWaning.layer,pars.list.60percHighTitreNoWaning.layer$beta,det.times$'60HighTitreNoWaning'))
 humanexposure <- cbind(humanexposure, 
-                       human.exposure.total.multiple.runs(output.60percHighTitreLowWaning.layer,param.list.60percHighTitreLowWaning.layer$beta,det.times$'60HighTitreLowWaning'))
+                       human.exposure.total.multiple.runs(output.60percHighTitreLowWaning.layer,pars.list.60percHighTitreLowWaning.layer$beta,det.times$'60HighTitreLowWaning'))
 
 names(humanexposure)<- c("run","baseline_total","baseline_detection",
                          "run","HighTitre60perc_total","HighTitre60perc_detection",
