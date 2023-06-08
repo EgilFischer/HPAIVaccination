@@ -7,7 +7,7 @@
 #                  Creation date: 28-3-2023                         
 #########################################################
 
-source("loadLibraries.R") 
+source("./src/loadLibraries.R") 
 
 #load simulations
 load.sims <- function(path, interval = NULL, params = FALSE){

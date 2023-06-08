@@ -9,9 +9,9 @@ K<-100 # define the first infected
 T_inf <- T_inf_matrix[K,] # rgamma(totpoints,10, scale=7/10) # mean=7, std=2
 Q_init <- Q_init_matrix[K,] # rexp(totpoints, rate = 1) # these are the thresholds (exposure to infection) picked from an exponential distribution of mean 1
 
-source("SpatialSellkeModel_init.R") # initialization and setting of the first infected
+source("./src/SpatialSellkeModel_init.R") # initialization and setting of the first infected
 while(nrow(Queue)!=0){
-  source("SpatialSellkeModel_loop.R")
+  source("./src/SpatialSellkeModel_loop.R")
 }
 # Show the simulation outputs
 # The outputs are stored in the matrix History

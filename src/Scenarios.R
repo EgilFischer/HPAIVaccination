@@ -8,7 +8,7 @@
 #########################################################
 
 #load libraries
-source("loadLibraries.R") 
+source("./src/loadLibraries.R") 
 
 #define number of types
 itypes = 2;

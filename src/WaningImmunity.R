@@ -1,5 +1,5 @@
 #load libraries
-source("loadLibraries.R") 
+source("./src/loadLibraries.R") 
 
 TiterWaning <- read_csv("TiterWaning.csv")
 TiterWaning <- reshape2::melt(TiterWaning,id.vars = c("Time"))

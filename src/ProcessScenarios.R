@@ -6,12 +6,9 @@
 #                  Contact:       e.a.j.fischer@uu.nl                       
 #                  Creation date  12-5-2023                       
 #########################################################
-
-
-
 #source required 
-source("loadLibraries.R") 
-source("postprocesSimulations.R")
+source("./src/loadLibraries.R") 
+source("./src/postprocesSimulations.R")
 
 #load simulations
 output.baseline.layer <- load.sims("./output/baseline_layer", interval = 0.1)$output

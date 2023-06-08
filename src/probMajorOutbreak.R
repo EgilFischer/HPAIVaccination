@@ -9,7 +9,7 @@
 #########################################################
 
 #load libraries
-source("loadLibraries.R") 
+source("./src/loadLibraries.R") 
 
 
 #Function to find the root of q1,q2 = pgf (probability generating functions) for q1, q2 for offspring of type 1 or  2, given ultimate extinction e.g. I1(\[Infinity]) = 0;  I2(\[Infinity]) =0
