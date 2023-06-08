@@ -29,7 +29,7 @@ param.list <- list(
   variance.infectious.period = c(3.0,4.0)^2, #Variance infectious period
   transRate = matrix(c(0,0.012,0.0,0), nrow = itypes), #value based on https://nvaidya.sdsu.edu/SIAP2015.pdf #transition rates should be of size itypes x itypes with 0 on diagonal
   pdie = c(0.01,0.01),#probability of dying at end of infectious period
-  mortRate = 0.0005 #per capita death rate #Mortality events
+  mortRate = 0.0005/7 #per capita death rate #Mortality events - based on performance reports and pers. com. mieke matthijs 0.5% per week
 )
 
 inits <- with(param.list,{list(

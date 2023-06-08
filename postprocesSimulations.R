@@ -74,11 +74,11 @@ plot.output.sparse <- function(output,vars,title = NULL, frac = 0.5){
 #   geom_path(aes(x = time, y = pinf, colour = factor(run)))
 
 #detection time ####
-#detect if a certain number of R dead are found within a certain time interval
 
-detection.time.threshold.interval <- function(times,Deaths, time.interval,threshold){
+#Passive detection: detect if a certain number of R dead are found within a certain time interval
+detection.time.threshold.interval <- function(times,Deaths, time.interval.pas,threshold){
   #determine the number of deaths at the end of the interval
-  Dinterval <- data.frame(t(sapply(FUN = function(t){c(time = t,deaths = max(Deaths[times < t]))}, X = seq(1, ceiling(max(times)),time.interval))));
+  Dinterval <- data.frame(t(sapply(FUN = function(t){c(time = t,deaths = max(Deaths[times < t]))}, X = seq(1, ceiling(max(times)),time.interval.pas))));
   #define the increment during the interval
   Dinterval$deaths <- c(0, tail(Dinterval$deaths,-1) -  head(Dinterval$deaths,-1))
   #return the first time the threshold is passed /  return Inf if never
@@ -87,10 +87,10 @@ detection.time.threshold.interval <- function(times,Deaths, time.interval,thresh
   
   
 }
-
-detection.time.threshold.subsequent <- function(times,Deaths, time.interval, threshold,ints ){
+#Passive detection: detect if a certain number of R dead are found within subsequent time intervals
+detection.time.threshold.subsequent <- function(times,Deaths, time.interval.pas, threshold,ints ){
   #determine the number of deaths at the end of the interval
-  Dinterval <- data.frame(t(sapply(FUN = function(t){c(time = t,deaths = max(Deaths[times < t]))}, X = seq(1, ceiling(max(times)),time.interval))));
+  Dinterval <- data.frame(t(sapply(FUN = function(t){c(time = t,deaths = max(Deaths[times < t]))}, X = seq(1, ceiling(max(times)),time.interval.pas))));
   #define the increment during the interval
   Dinterval$deaths <- c(0, tail(Dinterval$deaths,-1) -  head(Dinterval$deaths,-1))
   if(max(Dinterval$deaths)<threshold){return(Inf)}
@@ -102,8 +102,8 @@ detection.time.threshold.subsequent <- function(times,Deaths, time.interval, thr
   
 }
 
-#
-detection.times <- function(output,vars, detection.function,time.interval, threshold, ...){
+#Passive detection for several runs ####
+detection.times <- function(output,vars, detection.function,time.interval.pas, threshold, ...){
 
   
   
@@ -113,9 +113,9 @@ detection.times <- function(output,vars, detection.function,time.interval, thres
   for(i in c(1:max(output$run)))
   {
     if(exists("detection.times.output")){
-      detection.times.output <- rbind(detection.times.output, data.frame(run = i, det.time = detection.function(output[output$run ==i,]$times, output[output$run ==i,]$prevalence,time.interval,threshold,...)))}
+      detection.times.output <- rbind(detection.times.output, data.frame(run = i, det.time = detection.function(output[output$run ==i,]$times, output[output$run ==i,]$prevalence,time.interval.pas,threshold,...)))}
       else{
-      detection.times.output <- data.frame(run = i, det.time = detection.function(output[output$run ==i,]$times, output[output$run ==i,]$prevalence,time.interval,threshold,...))
+      detection.times.output <- data.frame(run = i, det.time = detection.function(output[output$run ==i,]$times, output[output$run ==i,]$prevalence,time.interval.pas,threshold,...))
     }
     
   }
@@ -126,7 +126,7 @@ detection.times <- function(output,vars, detection.function,time.interval, thres
 #calculate the detection time in a surveillance system where detection also occurs when a threshold on dead animals is reached
 detection.time.surveillance <- function(times,  #vector with times
                                         Deaths,  #vector with dead animals
-                                        time.interval,  #time interval for passive detection
+                                        time.interval.pas,  #time interval for passive detection
                                         ints,  #number of days with subsequent increased mortality
                                         threshold,  #threshold for passive detection
                                         Detectables, #matrix with size length(times) and groups of detectable animals
@@ -139,12 +139,14 @@ detection.time.surveillance <- function(times,  #vector with times
 ){
   set.seed(seed);
   #if this farm is not monitored return passive detection 
-  pas.det.time <- detection.time.threshold.subsequent(times,Deaths, time.interval, threshold,ints);
+  pas.det.time <- detection.time.threshold.subsequent(times,Deaths, time.interval.pas, threshold,ints);
   if(pfarm < runif(1)){return(data.frame(pas.det.time,ac.det.time = Inf, min.det.time = min(pas.det.time,Inf), ac.succes = FALSE))};
   
-  #determine detection time by active surveillance
+   #determine detection time by active surveillance
   ac.det.time <- first(times[rowSums(apply(Detectables, c(1,2), function(x){rbinom(x,n =1, p = se*panimal)}))>1]);
-  if(roundTime)ac.det.time <- round(ac.det.time/time.interval)*time.interval;
+  if(roundTime)ac.det.time <- round(ac.det.time/time.interval.ac)*time.interval.ac;
+  #replace NA by Inf as this one in undetected
+  ac.det.time[ is.na(ac.det.time)] <- Inf
   #return
   tmp.det <- data.frame(pas.det.time,ac.det.time, min.det.time = min(pas.det.time,ac.det.time), ac.succes = pas.det.time>ac.det.time);
   return(tmp.det)
@@ -153,7 +155,7 @@ detection.time.surveillance <- function(times,  #vector with times
 #detection.time.surveillance both active and passive 1 simulation
 detection.times.surveillance.single <- function(output,  #output
                                       Deaths.vars,  #vector with dead animals
-                                      time.interval,  #time interval for passive detection
+                                      time.interval.pas,  #time interval for passive detection
                                       ints,  #number of days with subsequent increased mortality
                                       threshold,  #threshold for passive detection
                                       Detectables.vars, #matrix with size length(times) and groups of detectable animals
@@ -162,6 +164,8 @@ detection.times.surveillance.single <- function(output,  #output
                                       se, #sensitivity of test per type of detectable animal,
                                       seed = NULL,
                                       roundTime = TRUE,
+                                      time.interval.ac = 1, 
+                                      init.ac =0,
                                       Detectables.incidence = FALSE, #either a boolean or vector of length Detectables.vars with booleans indicating whether the values need to be transformed to incidence data. 
                                       ...
 ){
@@ -176,6 +180,10 @@ detection.times.surveillance.single <- function(output,  #output
   {
     #temporary values of this run
     tmp <- tmp.output%>%filter(run ==i)
+    #bin in time intervals
+    tmp$times <- round(ac.det.time/time.interval.ac)*time.interval.ac
+    
+    
     #if transform to incidence is required 
    if(Detectables.incidence ==TRUE || length(Detectables.incidence)>1)
    {
@@ -187,7 +195,6 @@ detection.times.surveillance.single <- function(output,  #output
       #transform this particular value
       if(Detectables.incidence[i]){
         #transform output
-        
         tmp[,Detectables.vars[i]] <-unlist(c(0, unlist(tail(tmp[,Detectables.vars[i]],-1) -  head(tmp[,Detectables.vars[i]],-1))))
         
       }
@@ -197,9 +204,9 @@ detection.times.surveillance.single <- function(output,  #output
     
     
     if(exists("detection.times.output")){
-      detection.times.output <- rbind(detection.times.output,data.frame(run = i, detection.time.surveillance(tmp$times, tmp$deaths,time.interval,ints,threshold,as.matrix(tmp[,Detectables.vars]),pfarm,panimal, se, seed, roundTime, ...)))}
+      detection.times.output <- rbind(detection.times.output,data.frame(run = i, detection.time.surveillance(tmp$times, tmp$deaths,time.interval.pas,ints,threshold,as.matrix(tmp[,Detectables.vars]),pfarm,panimal, se, seed, roundTime, ...)))}
     else{
-      detection.times.output <- data.frame(run = i, detection.time.surveillance(tmp$times, tmp$deaths,time.interval,ints,threshold,as.matrix(tmp[,Detectables.vars]),pfarm,panimal, se, seed, roundTime, ...))
+      detection.times.output <- data.frame(run = i, detection.time.surveillance(tmp$times, tmp$deaths,time.interval.pas,ints,threshold,as.matrix(tmp[,Detectables.vars]),pfarm,panimal, se, seed, roundTime, ...))
     }
     
   }
@@ -207,10 +214,10 @@ detection.times.surveillance.single <- function(output,  #output
 }
 
 
-#detection.time.surveillance both active and passive 1 simulation
+#detection.time.surveillance both active and passive 1 simulation multiple detection times
 detection.times.surveillance <- function(output,  #output
                                          Deaths.vars,  #vector with dead animals
-                                         time.interval,  #time interval for passive detection
+                                         time.interval.pas,  #time interval for passive detection
                                          ints,  #number of days with subsequent increased mortality
                                          threshold,  #threshold for passive detection
                                          Detectables.vars, #matrix with size length(times) and groups of detectable animals
@@ -220,13 +227,14 @@ detection.times.surveillance <- function(output,  #output
                                          seed = NULL,
                                          roundTime = TRUE,
                                          Detectables.incidence = FALSE, #either a boolean or vector of length Detectables.vars with booleans indicating whether the values need to be transformed to incidence data. 
+                                         init.time = 0, #start active surveillance
                                          reps = 1, #default one repetiton
                                          ...
 ){
   for(i in c(1:reps)){
     detection.tmp <-detection.times.surveillance.single(output,  #output
                                                  Deaths.vars,  #vector with dead animals
-                                                 time.interval,  #time interval for passive detection
+                                                 time.interval.pas,  #time interval for passive detection
                                                  ints,  #number of days with subsequent increased mortality
                                                  threshold,  #threshold for passive detection
                                                  Detectables.vars, #matrix with size length(times) and groups of detectable animals
@@ -250,17 +258,17 @@ detection.times.surveillance <- function(output,  #output
 # #
 # for(i in c(1:4)){
 #   for(j in c(1:10))  {
-#     det.time<-detection.time.threshold.interval(times = output$time[output$scenario == i & output$run ==j],D = output$D[output$scenario == i & output$run ==j], time.interval = 2,0.005*c(75000,45000,45000,45000)[i])
+#     det.time<-detection.time.threshold.interval(times = output$time[output$scenario == i & output$run ==j],D = output$D[output$scenario == i & output$run ==j], time.interval.pas = 2,0.005*c(75000,45000,45000,45000)[i])
 #     det.times.interval <- rbind(det.times,data.frame(scenario = i, run = j, det.time = det.time))
 #     
-#     det.time<-detection.time.threshold.subsequent(times = output$time[output$scenario == i & output$run ==j],D = output$D[output$scenario == i & output$run ==j], time.interval = 1,n =2 , 0.005*c(75000,45000,45000,45000)[i])
+#     det.time<-detection.time.threshold.subsequent(times = output$time[output$scenario == i & output$run ==j],D = output$D[output$scenario == i & output$run ==j], time.interval.pas = 1,n =2 , 0.005*c(75000,45000,45000,45000)[i])
 #     det.times.subseq <- rbind(det.times.subseq,data.frame(scenario = i, run = j, det.time = det.time))
 #   }
 # }
 
 
 # 
-# det.time <- detection.time.threshold.interval(times = output$time[output$run ==4],D = output$DR.1[output$run ==4]+output$DR.2[output$run ==4], time.interval = 1,0.05*75000)
+# det.time <- detection.time.threshold.interval(times = output$time[output$run ==4],D = output$DR.1[output$run ==4]+output$DR.2[output$run ==4], time.interval.pas = 1,0.05*75000)
 # det.time
 # 
 # # #detect if a certain number of R animals are found 
@@ -289,14 +297,23 @@ human.exposure.timeseries <- function(output, beta.human){
   
 }
 
-human.exposure.total.multiple.runs<- function(output, beta.human,detection.time)
+human.exposure.total.multiple.runs<- function(output, beta.human,detection.time,var = "min.det.time", reps = 1)
 {
+  if(is.null(detection.time$rep))detection.time$rep <- 1;
   exposure<- data.frame(output)%>% group_by(run)%>%reframe(total.exposure = sum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt))
   exp.det<-c();
   for(i in exposure$run){
-    exp.det<-rbind(exp.det, data.frame(output)%>%filter(run == i & time<= detection.time[i])%>%reframe(detection.exposure = sum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt)))
+    for(j in c(1:reps))
+    {
+      exp.det<-rbind(exp.det, data.frame(output)%>%filter(run == i & time<= detection.time[detection.time$run == i & detection.time$rep == j, var])%>%reframe(run = i,
+                                                                                                                                                          rep = j,
+                                                                                                                                                          detection.time = detection.time[detection.time$run == i & detection.time$rep == j, var],
+        detection.exposure = sum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt),
+        cum.I.1 = sum(I.1*dt),
+        cum.I.2 = sum(I.2*dt)))
+    }
   }
-  exposure<- cbind(exposure, data.frame(detection.exposure = exp.det))
+  exposure<- cbind( data.frame(exp.det),data.frame(total.exposure = rep(exposure$total.exposure, each = reps)))
   return(exposure)
 }
 # ggplot(data = exposure.human) + geom_path(aes(x = time, y = psurvdt, group = run))
