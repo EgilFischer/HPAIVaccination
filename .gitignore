@@ -4,6 +4,6 @@
 .Ruserdata
 .RDS
 *.RDS
-.png
-.jpg
-.tif
+*.png
+*.jpg
+*.tif
