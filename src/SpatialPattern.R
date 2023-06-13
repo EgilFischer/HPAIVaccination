@@ -17,8 +17,8 @@ points_conf <- as.data.frame(
   matrix(0,
          nrow = n.points,
          ncol = 2))#length(scalepar_values)*length(varpar_values)*2)) # Multiply for 2 because you have x and y coordinates
-points_conf[1]<- runif(n.points, min = 0, max = 280)
-points_conf[2]<- runif(n.points, min = 300, max = 625)
+points_conf[1]<- runif(n.points, min = 0, max = 140)
+points_conf[2]<- runif(n.points, min = 300, max = 325)
 plot(points_conf)
 # # Load packages
 # library(sp)

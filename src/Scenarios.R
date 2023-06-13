@@ -9,7 +9,7 @@
 
 #load libraries
 source("./src/loadLibraries.R") 
-
+source("./src/multitypetransitionsSIRsellke_simfunc.R")
 #define number of types
 itypes = 2;
 
@@ -19,7 +19,7 @@ itypes = 2;
 #Baseline parameters for layer flock ####
 param.list.baseline.layer <- list(
   scenario = "baseline_Layer", #scenario
-  runs = 40, #number of runs
+  runs = 10, #number of runs
   max.time = 17*30,#length of the run
   itypes = itypes, #type
   N0 = 45000, #population size - agramatie website
@@ -29,37 +29,33 @@ param.list.baseline.layer <- list(
   infectious.period = c(3.0,4.0),#Duration infectious period 
   variance.infectious.period = c(3.0,4.0)^2/20, #Variance infectious period - Hobbelen et al uses shape parameter of 20 -> variance = m^2 / shape 
   transRate = matrix(c(0,0.038,0.0,0), nrow = itypes), #value based on https://nvaidya.sdsu.edu/SIAP2015.pdf #transition rates should be of size itypes x itypes with 0 on diagonal
-  pdie = c(0.95,0.01),#probability of dying at end of infectious period
+  pdie = c(0.99,0.01),#probability of dying at end of infectious period
   mortRate = 0.0005/7 #per capita death rate #Mortality events - based on performance reports and pers. com. mieke matthijs 0.5% per week +Gonzales & elbers figure 1 
 )
 
 
-# 60% high titre parameters for layer flock ####
-param.list.60percHighTitre.layer <- param.list.baseline.layer;
-param.list.60percHighTitre.layer$scenario <- "HighTitre60percLowWaning_layer";
-param.list.60percHighTitre.layer$p.hightitre <- 0.6;
+#Create other scenarios
+#introduction at different times since peak protection at t = 0
+intro.time <- c(0, 1, 10, 100)  #initial high-titre = exp(-transRate*introtime)
+waning <- c(0,0.012,0.038)
 
-
-# 60% high titre parameters no waning for broiler flock ####
-param.list.60percHighTitreNoWaning.layer <- param.list.baseline.layer;
-param.list.60percHighTitreNoWaning.layer$scenario <- "HighTitre60percNoWaning_layer";
-param.list.60percHighTitreNoWaning.layer$p.hightitre <- 0.6;
-param.list.60percHighTitreNoWaning.layer$transRate <- matrix(c(0,0.0,0.0,0), nrow = itypes);
-
-
-# 60% high titre parameters low waning for broiler flock ####
-param.list.60percHighTitreLowWaning.layer <- param.list.baseline.layer;
-param.list.60percHighTitreLowWaning.layer$scenario <- "HighTitre60percNoWaning_layer";
-param.list.60percHighTitreLowWaning.layer$p.hightitre <- 0.6;
-param.list.60percHighTitreLowWaning.layer$transRate <- matrix(c(0,0.12,0.0,0), nrow = itypes);
-
+#create scenarios
+scenario.list <- list()
+for(i in c(1:4)){
+  for(j in c(1:3)){
+  param.list <- param.list.baseline.layer;
+  param.list$max.time  <- param.list.baseline.layer$max.time - intro.time[i];
+  param.list$transRate[2,1]  <- waning[j];
+  param.list$p.hightitre <- exp(-waning[j]*intro.time[i]);
+  param.list$scenario <- paste0("layerwaning",waning[j],"introtime",intro.time[i]);
+  scenario.list[[(i-1)*length(waning) + j]]<- param.list
+  }
+  
+}
 
 
 #probability of a major outbreak
-q1q2.baseline.layer <- q1q2(with(param.list.baseline.layer,list(N0 = N0,
-                                                 gamma = 1/infectious.period,
-                                                 beta = beta,
-                                                 mu = mortRate)))
+q1q2.baseline.layer <- q1q2(param.list.baseline.layer)
 
 n <- param.list.baseline.layer$initial
 ggplot(data =q1q2.baseline.layer)+
@@ -70,15 +66,18 @@ ggplot(data =q1q2.baseline.layer)+
   xlab("Proportion with high titre")+
   ylab("Probability of a minor outbreak")+ 
   scale_colour_manual(name = paste("Introduction by",n,"birds \n"),
-                      #labels = c("Low Titre","Type 1 & 2","Type 2 only"),
-                      values = c("red","blue","grey","black"))#+
-  #theme(legend.position="bottom")
+                      labels = c("High Titre","High and Low Titre","Low Titre","R"),
+                      values = c("red","blue","grey","black"))+
+  theme(legend.position="bottom")
 ggsave("./output/figures/probMinorOutbreakLayer.png" )
 
 #do simulations#
 output.baseline.layer <- simulate.multitypeSIR(param.list.baseline.layer)
-output.60percHighTitre.layer <- simulate.multitypeSIR(param.list.60percHighTitre.layer)
-output.60percHighTitreNoWaning.layer <- simulate.multitypeSIR(param.list.60percHighTitreNoWaning.layer)
+for(i in c(1:length(scenario.list))){
+  print(scenario.list[[i]]$scenario);
+  print(Sys.time())
+  simulate.multitypeSIR(scenario.list[[i]])
+}
 
 #load simulations
 output.baseline.layer <- load.sims("./output/baseline_layer", interval = 0.1)$output
@@ -86,15 +85,7 @@ output.60percHighTitre.layer <- load.sims("./output/HighTitre60perc_layer", inte
 output.60percHighTitreLowWaning.layer <- load.sims("./output/HighTitre60percLowWaning_layer", interval = 0.1)$output
 output.60percHighTitreNoWaning.layer <- load.sims("./output/HighTitre60percNoWaning_layer", interval = 0.1)$output
 
-#remove error in runs
-output.baseline.layer[which(output.baseline.layer$time == 0 & output.baseline.layer$N == 45000, arr.ind = TRUE),"run"]<- c(1:41)
-output.baseline.layer <- output.baseline.layer%>%filter(run!=41);
-output.60percHighTitre.layer[which(output.60percHighTitre.layer$time == 0 & output.60percHighTitre.layer$N == 45000, arr.ind = TRUE),"run"]<- c(1:10)
-output.60percHighTitreLowWaning.layer[which(output.60percHighTitreLowWaning.layer$time == 0 & output.60percHighTitreLowWaning.layer$N == 45000, arr.ind = TRUE),"run"]<- c(1:40)
-output.60percHighTitreNoWaning.layer[which(output.60percHighTitreNoWaning.layer$time == 0 & output.60percHighTitreNoWaning.layer$N == 45000, arr.ind = TRUE),"run"]<- c(1:11)
-output.60percHighTitreNoWaning.layer <- output.60percHighTitreNoWaning.layer%>%filter(run!=11);
 
-# #visualize
 # plot.output(output.baseline.layer,c("I.1","I.2","R.1","R.2"), "Layer base line")
 # ggsave("./output/figures/baselinelayer.png")
 # plot.output(output.baseline.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer base line")
