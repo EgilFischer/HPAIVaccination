@@ -331,14 +331,13 @@ sim.multitypeSIR <- function(param.list,init, functions, seed = NULL)
     }
     #record output and parameters
     op <- list(out = output, pars = param.list)
-    
     saveRDS(op, file = paste0(path,"/",format(Sys.Date(),"%Y%m%d"),gsub(pattern = "[.]",replacement = "",x = scenario),"",currun,".RDS"))
-    #if(exists("all.output")){all.output <- rbind(all.output,data.frame(output))}else{all.output <- data.frame(output)}
+    
     #add on to the current run counter
     currun <- currun +1
     
   }
-  #return(all.output);
+  
 })};
 
 # wrapper function so that only requires param.list ####

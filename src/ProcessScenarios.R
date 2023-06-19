@@ -9,43 +9,83 @@
 #source required 
 source("./src/loadLibraries.R") 
 source("./src/postprocesSimulations.R")
+source("./src/probMajorOutbreak.R")
 
 #load simulations
 output.baseline.layer <- load.sims("./output/baseline_layer", interval = 0.1)$output
-output.90percHighTitre.layer <- load.sims("./output/HighTitre60perc_layer", interval = 0.1)$output
-output.60percHighTitreHighWaning.layer <- load.sims("./output/HighTitre60percHighWaning_layer", interval = 0.1)$output
-output.60percHighTitreNoWaning.layer <- load.sims("./output/HighTitre60percNoWaning_layer", interval = 0.1)$output
+output.layer <- lapply(c(1:12),function(i){load.sims(paste0("./output/",gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)$output})
 
 #load parameters (assuming all parameter lists are equal within a folder)
 pars.baseline.layer <- load.sims("./output/baseline_layer", params = TRUE)$pars[[1]]
-pars.60percHighTitre.layer <- load.sims("./output/HighTitre60perc_layer", params = TRUE)$pars[[1]]
-pars.60percHighTitreHighWaning.layer <- load.sims("./output/HighTitre60percHighWaning_layer", params = TRUE)$pars[[1]]
-pars.60percHighTitreNoWaning.layer <- load.sims("./output/HighTitre60percNoWaning_layer", params = TRUE)$pars[[1]]
+pars.layer <- lapply(c(1:12),function(i){load.sims(paste0("./output/",gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)}$pars[[1]])
+
+#probability of a major outbreak ####
+q1q2.baseline.layer <- q1q2(param.list.baseline.layer)
+
+n <- param.list.baseline.layer$initial
+
+q1q2plot <- ggplot(data =q1q2.baseline.layer)+
+  geom_path(aes(p,q1^(n), colour = "Low Titre"))+
+  geom_path(aes(p,q2^(n), colour = "High Titre"))+
+  geom_path(aes(p,(q1^(n*(1-p))* q2^(n*p)), colour = "Low & High titre ratio"))+
+  geom_path(aes(p,Rv, colour = "R"))+
+  xlab("Proportion with high titre")+
+  ylab("Probability of a minor outbreak")+ 
+  scale_colour_manual(name = paste("Introduction by",n,"birds \n"),
+                      labels = c("High Titre","High and Low Titre","Low Titre","R"),
+                      values = c("red","blue","grey","black"))+
+  theme()
+ggsave("./output/figures/probMinorOutbreakLayer.png" ,q1q2plot)
+
+df = data.frame(scenario  = sapply(c(1:12), FUN = function(i){unlist(scenario.list[[i]][c("scenario")])}),
+                p.hightitre = sapply(c(1:12), FUN = function(i){unlist(scenario.list[[i]][c("p.hightitre")])}))
+
+phight0 = unique(df$p.hightitre)
+#indicate the status at t = 0 of the scenarios
+q1q2plot.anno <- ggplot(data =q1q2.baseline.layer)+
+  geom_path(aes(p,q1^(n), colour = "Low Titre"))+
+  geom_path(aes(p,q2^(n), colour = "High Titre"))+
+  geom_path(aes(p,(q1^(n*(1-p))* q2^(n*p)), colour = "Low & High titre ratio"))+
+  geom_path(aes(p,Rv, colour = "R"))+
+  geom_vline(xintercept = phight0, linetype = "dotted")+
+  xlab("Proportion with high titre")+
+  ylab("Probability of a minor outbreak")+ 
+  scale_colour_manual(name = paste("Introduction by",n,"birds"),
+                      labels = c("High Titre","High and Low Titre","Low Titre","R"),
+                      values = c("red","blue","grey","black"))+
+  theme()
+ggsave("./output/figures/probMinorOutbreakLayerAnno.png" )
 
 
-#visualize
-plot.output(output.baseline.layer,c("I.1","I.2","R.1","R.2"), "Layer base line")
-ggsave("./output/figures/baselinelayer.png")
-plot.output(output.baseline.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer base line")
-ggsave("./output/figures/baselinelayerdeaths.png")
-gc()
-plot.output(output.60percHighTitre.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre")
-ggsave("./output/figures/HighTitre60preclayer.png")
-plot.output(output.60percHighTitre.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre")
-ggsave("./output/figures/HighTitre60preclayerdeaths.png")
-gc()
-plot.output(output.60percHighTitreHighWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre / High waning")
-ggsave("./output/figures/HighTitre60precHighWaninglayer.png")
-plot.output(output.60percHighTitreHighWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre / High waning")
-ggsave("./output/figures/HighTitre60precHighWaninglayerdeaths.png")
-gc()
-plot.output(output.60percHighTitreNoWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 60% high titre / no waning")
-ggsave("./output/figures/HighTitre60preclayerNoWaning.png")
-plot.output(output.60percHighTitreNoWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 60% high titre / no waning")
-ggsave("./output/figures/HighTitre60preclayerNoWaningdeaths.png")
-gc()
 
-#surveillance
+#visualize ####
+for(i in c(1:12)){
+  show(plot.output(output.layer[[i]],c("I.1","I.2","R.1","R.2"), scenario.list[[i]]$scenario))
+  ggsave(paste0("./output/figures/", gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = ""),".png"))
+  gc()  
+}
+
+#surveillance ###
+rm(surveillance.layer)
+reps <- 10;i  =1
+for(in in c(1:12)){stop()
+  tmp <- cbind(detection.times.surveillance(output.baseline.layer, 
+                                            c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
+                                            time.interval.pas = 1,
+                                            ints = 2,
+                                            threshold = 0.005*pars.layer[[i]]$N0,
+                                            c("DI.1","DI.2","DR.1","DR.2"), 
+                                            pfarm = 1., 
+                                            panimal = .001,
+                                            se = 0.9,
+                                            Detectables.incidence = TRUE,
+                                            time.interval.ac =7,
+                                            reps = reps),
+               scenario = pars.layer[[i]]$scenario)
+  surveillance.layer <-if(!exists("surveillance.layer")){} ;
+  
+}
+
 N0 <- pars.baseline.layer$N0
 reps <- 10;
 rm(surveillance.layer)
