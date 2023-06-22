@@ -9,19 +9,22 @@
 #source required 
 source("./src/loadLibraries.R") 
 source("./src/postprocesSimulations.R")
+source("./src/detectionModule.R")
 source("./src/probMajorOutbreak.R")
 
-#load simulations
-output.baseline.layer <- load.sims("./output/baseline_layer", interval = 0.1)$output
-output.layer <- lapply(c(1:12),function(i){load.sims(paste0("./output/",gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)$output})
+# Layer baseline ####
+#load baseline simulations 
+rm(output.baseline.layer)
+output.baseline.layer <- load.sims("./output/baseline_layer", interval = 0.001)$output
 
-#load parameters (assuming all parameter lists are equal within a folder)
+
+#load baseline parameters (assuming all parameter lists are equal within a folder)
 pars.baseline.layer <- load.sims("./output/baseline_layer", params = TRUE)$pars[[1]]
-pars.layer <- lapply(c(1:12),function(i){load.sims(paste0("./output/",gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)}$pars[[1]])
 
 #probability of a major outbreak ####
 q1q2.baseline.layer <- q1q2(param.list.baseline.layer)
-
+threshold <- q1q2.baseline.layer%>%select("p","Rv")%>%filter(Rv<=1)%>%first
+  
 n <- param.list.baseline.layer$initial
 
 q1q2plot <- ggplot(data =q1q2.baseline.layer)+
@@ -58,6 +61,10 @@ ggsave("./output/figures/probMinorOutbreakLayerAnno.png" )
 
 
 
+#Layer scenarios ####
+output.layer <- lapply(c(1:12),function(i){load.sims(paste0("./output/",gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)$output})
+pars.layer <- lapply(c(1:12),function(i){load.sims(paste0("./output/",gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)}$pars[[1]])
+
 #visualize ####
 for(i in c(1:12)){
   show(plot.output(output.layer[[i]],c("I.1","I.2","R.1","R.2"), scenario.list[[i]]$scenario))
@@ -65,134 +72,102 @@ for(i in c(1:12)){
   gc()  
 }
 
+
 #surveillance ###
+reps <- 100;
+surveillance.layer.baseline <- cbind(repeat.detection.time.surveillance(output.baseline.layer,
+                                   reps = reps,
+                                   deaths.vars  = c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
+                                   time.interval.pas = 1,
+                                   threshold = 0.005*pars.baseline.layer$N0,
+                                   ints = 2,
+                                   detectables.vars = c("DI.1","DI.2","DR.1","DR.2"),
+                                   se = 0.99,
+                                   time.interval.ac =7,
+                                   init.ac =0,
+                                   detectables.incidence = TRUE,
+                                   pfarm = 1., 
+                                   panimal = 1.),
+scenario = pars.baseline.layer$scenario)
 rm(surveillance.layer)
-reps <- 10;i  =1
-for(in in c(1:12)){stop()
-  tmp <- cbind(detection.times.surveillance(output.baseline.layer, 
-                                            c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-                                            time.interval.pas = 1,
-                                            ints = 2,
-                                            threshold = 0.005*pars.layer[[i]]$N0,
-                                            c("DI.1","DI.2","DR.1","DR.2"), 
-                                            pfarm = 1., 
-                                            panimal = .001,
-                                            se = 0.9,
-                                            Detectables.incidence = TRUE,
-                                            time.interval.ac =7,
-                                            reps = reps),
-               scenario = pars.layer[[i]]$scenario)
-  surveillance.layer <-if(!exists("surveillance.layer")){} ;
+for(i in c(1:12)){
+  tmp <- cbind(repeat.detection.time.surveillance(output.layer[[i]],
+                                                  reps = reps,
+                                                  deaths.vars  = c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
+                                                  time.interval.pas = 1,
+                                                  threshold = 0.005*pars.layer[[i]]$N0,
+                                                  ints = 2,
+                                                  detectables.vars = c("DI.1","DI.2","DR.1","DR.2"),
+                                                  se = 0.99,
+                                                  time.interval.ac =7,
+                                                  init.ac ="rand",
+                                                  detectables.incidence = TRUE,
+                                                  pfarm = 1., 
+                                                  panimal = 1.),
+               scenario = pars.layer[[i]]$scenario,
+               WaningRate = max(pars.layer[[i]]$transRate),
+               introTime = pars.baseline.layer$max.time-max(pars.layer[[i]]$max.time))
+  surveillance.layer <-if(!exists("surveillance.layer")){tmp}else {rbind(surveillance.layer,tmp)}
   
 }
-
-N0 <- pars.baseline.layer$N0
-reps <- 10;
-rm(surveillance.layer)
-surveillance.layer <-cbind(detection.times.surveillance(output.baseline.layer, 
-                                               c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-                                               time.interval = 1,
-                                               ints = 2,
-                                               threshold = 0.005*N0,
-                                               c("DI.1","DI.2","DR.1","DR.2"), 
-                                               pfarm = 1., 
-                                               panimal = .001,
-                                               se = 0.9,
-                                               Detectables.incidence = TRUE,
-                                               reps = reps),
-                                    scenario = "baseline_layer");
-
-N0 <- pars.60percHighTitre.layer$N0
-surveillance.layer <-rbind(surveillance.layer, cbind(detection.times.surveillance(output.60percHighTitre.layer, 
-                                                           c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-                                                           time.interval = 1,
-                                                           ints = 2,
-                                                           threshold = 0.005*N0,
-                                                           c("DI.1","DI.2","DR.1","DR.2"), 
-                                                           pfarm = 1., 
-                                                           panimal = .001,
-                                                           se = 0.9,
-                                                           Detectables.incidence = TRUE,
-                                                           reps = reps),
-                                                     scenario = "HighTitre60perc_layer"));
-
-
-N0 <- pars.60percHighTitreHighWaning.layer$N0
-surveillance.layer <-rbind(surveillance.layer, cbind(detection.times.surveillance(output.60percHighTitreHighWaning.layer, 
-                                                                  c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-                                                                  time.interval = 1,
-                                                                  ints = 2,
-                                                                  threshold = 0.005*N0,
-                                                                  c("DI.1","DI.2","DR.1","DR.2"), 
-                                                                  pfarm = 1., 
-                                                                  panimal = .001,
-                                                                  se = 0.9,
-                                                                  Detectables.incidence = TRUE,
-                                                                  reps = reps),
-                                                     scenario = "HighTitre60percHighWaning"));
+surveillance.layer<- cbind(surveillance.layer,surveillance.layer$scenario%>%gsub(pattern ="layer_", replacement = "")%>%str_split_fixed(pattern = c("intro"),2)%>%as.data.frame())
 
 
 
-
-N0 <- pars.60percHighTitreNoWaning.layer$N0
-
-surveillance.layer <-rbind(surveillance.layer, cbind(detection.times.surveillance(output.60percHighTitreNoWaning.layer, 
-                                                                           c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-                                                                           time.interval = 1,
-                                                                           ints = 2,
-                                                                           threshold = 0.005*N0,
-                                                                           c("DI.1","DI.2","DR.1","DR.2"), 
-                                                                           pfarm = 1., 
-                                                                           panimal = .001,
-                                                                           se = 0.9,
-                                                                           Detectables.incidence = TRUE,
-                                                                           reps = reps),  
-                                                     scenario = "HighTitre60percNoWaning"));
-
-
-scenario.label <- list("baseline_layer" = "Baseline",
-                       "HighTitre60perc_layer" = "60% - Slow",
-                       "HighTitre60percHighWaning" = "60% - Fast",
-                       "HighTitre60percNoWaning" = "60% - No")
-
+ggplot(data = surveillance.layer.baseline)+
+  geom_histogram(aes(x = pas.det.time, y=..count../sum(..count..)),    colour = "black", 
+                 fill = "black", 
+                 alpha = 0.5, binwidth = 1.0)+
+  geom_histogram(aes(ac.det.time, y=..count../sum(..count..)),colour = "black", 
+                 fill = "orange",
+                 alpha = 0.5, binwidth = 1.0)+
+  geom_density(aes(min.det.time,after_stat(..count../sum(..count..))),
+               colour = "red",
+               linewidth = .5,
+               bw = 1)+
+  xlim(0,15)+ylim(0,NA)+
+  xlab("Detection time")+
+  ylab("Proportion of runs")+
+  ggtitle("Active and passive surveillance")
+ggsave("./output/figures/baseline_layer_surveillance.png")
 
 ggplot(data = surveillance.layer%>%filter(scenario != "baseline_layer") )+
-  geom_histogram(aes(x = pas.det.time, y=..count../sum(..count..)),    colour = "black", 
-                  fill = "black", 
-                  alpha = 0.5, binwidth = 1.0)+
-   geom_histogram(aes(ac.det.time, y=..count../sum(..count..)),colour = "black", 
-                  fill = "orange",
-                  alpha = 0.5, binwidth = 1.0)+
-  geom_density(aes(min.det.time,after_stat(count/length(min.det.times$run))),
-                colour = "red",
-                linewidth = 1,
-               bw = 1)+
+   geom_histogram(aes(x = pas.det.time, y=..count../sum(..count..)),    colour = "black", 
+                   fill = "black", 
+                   alpha = 0.5, binwidth = 1.0)+
+    geom_histogram(aes(ac.det.time, y=..count../sum(..count..)),colour = "black", 
+                   fill = "orange",
+                   alpha = 0.5, binwidth = 1.0)+
+    geom_density(aes(min.det.time,after_stat(..count../sum(..count..))),
+                 colour = "red",
+                 linewidth = .5,
+                bw = 1)+
+  xlim(0,NA)+ylim(0,NA)+
   xlab("Detection time")+
   ylab("Proportion of runs")+
   ggtitle("Active and passive surveillance")+
-  facet_grid(scenario~., labeller =  function(variable,value){
-    return(scenario.label[value])
-  })
+   facet_grid(introTime~WaningRate
+              #,labeller =  function(variable,value){return(scenario.label[value])}
+     )
 ggsave("./output/figures/scenarios_layer_surveillance.png")
 
 
 #human exposure
 rm(humanexposure.min)
-sim.runs <- length(unique(output.baseline.layer$run))
 #as we used multiple repeats to determine active surveillance repeat
-humanexposure.min <- cbind(human.exposure.total.multiple.runs(output.baseline.layer,pars.baseline.layer$beta,surveillance.layer%>%filter(scenario == "baseline_layer"), var = "min.det.time", rep = 10), scenario = "baseline")
-humanexposure.min <- rbind(humanexposure.min,
-                           cbind(human.exposure.total.multiple.runs(output.60percHighTitre.layer,
-                                                                    pars.60percHighTitre.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre60perc_layer"), var = "min.det.time", rep = 10), scenario = "HighTitre60perc"))
-humanexposure.min <- rbind(humanexposure.min,
-                           cbind(human.exposure.total.multiple.runs(output.60percHighTitreHighWaning.layer,
-                                                                    pars.60percHighTitreHighWaning.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre60percHighWaning"), var = "min.det.time", rep = 10), scenario = "HighTitre60percHighWaning"))
-humanexposure.min <- rbind(humanexposure.min,
-                           cbind(human.exposure.total.multiple.runs(output.60percHighTitreNoWaning.layer,
-                                                                    pars.60percHighTitreNoWaning.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre60percNoWaning"), var = "min.det.time", rep = 10), scenario = "HighTitre60percNoWaning"))
+humanexposure.min <- cbind(human.exposure.total.multiple.runs(output.baseline.layer,
+                                                              pars.baseline.layer$beta,
+                                                              surveillance.layer.baseline, var = "min.det.time"), scenario = "baseline")
+
+for(k in c(1:12))
+{
+  humanexposure.min <- rbind(humanexposure.min,
+                             cbind(human.exposure.total.multiple.runs(output.layer[[k]],
+                                                                      pars.layer[[k]]$beta,
+                                                                      surveillance.layer%>%filter(scenario == pars.layer[[k]]$scenario), var = "min.det.time"), scenario = pars.layer[[k]]$scenario))
+  
+}
+
 
 
 baseline.average.det <- mean(unlist(humanexposure.min%>%filter(scenario == "baseline")%>%select("detection.exposure")))
@@ -202,18 +177,15 @@ humanexposure.min$ratio.tot <- humanexposure.min$total.exposure/baseline.average
 
 
 ggplot(humanexposure.min)+geom_point(aes(x = detection.time, y = ratio.det, colour = scenario))
-scenario.label <- list("baseline" = "Baseline",
-                       "HighTitre60perc" = "60% - Slow",
-                       "HighTitre60percHighWaning" = "60% - Fast",
-                       "HighTitre60percNoWaning" = "60% - No")
+
 ggplot(humanexposure.min) +
-  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = scenario),binwidth = .15)+
+  geom_histogram(aes(log10(ratio.det),after_stat(.15*density), fill = scenario),binwidth = .15)+
   xlab("Risk ratio of exposure \n (reference baseline)") + 
   ylab("Proportion")+
-  geom_vline(xintercept = 1)+
-  facet_grid(scenario~., labeller =  function(variable, value){
-    return(scenario.label[value])
-  }) +ggtitle("Human exposure")+theme(legend.position = 'none')
+  geom_vline(xintercept = log10(1))+
+  facet_grid(scenario~.)+#, labeller =  function(variable, value){
+    #return(scenario.label[value])}) 
+ ggtitle("Human exposure")+theme(legend.position = 'none')
 ggsave("./output/figures/humanexposurelayer.png")
 
 #average ratios
@@ -227,244 +199,43 @@ humanexposure.min%>%reframe(.by = scenario,
 
 
 #passive detection
-humanexposure.pas <- cbind(human.exposure.total.multiple.runs(output.baseline.layer,pars.baseline.layer$beta,surveillance.layer%>%filter(scenario == "baseline_layer"), var = "pas.det.time", rep = 1), scenario = "baseline")
-humanexposure.pas <- rbind(humanexposure.pas,
-                           cbind(human.exposure.total.multiple.runs(output.60percHighTitre.layer,
-                                                                    pars.60percHighTitre.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre60perc_layer"), var = "pas.det.time", rep = 1), scenario = "HighTitre60perc"))
-humanexposure.pas <- rbind(humanexposure.pas,
-                           cbind(human.exposure.total.multiple.runs(output.60percHighTitreHighWaning.layer,
-                                                                    pars.60percHighTitreHighWaning.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre60percHighWaning"), var = "pas.det.time", rep = 1), scenario = "HighTitre60percHighWaning"))
-humanexposure.pas <- rbind(humanexposure.pas,
-                           cbind(human.exposure.total.multiple.runs(output.60percHighTitreNoWaning.layer,
-                                                                    pars.60percHighTitreNoWaning.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre60percNoWaning"), var = "pas.det.time", rep = 1), scenario = "HighTitre60percNoWaning"))
+rm(humanexposure.pas)
+#as we used multiple repeats to determine active surveillance repeat
+humanexposure.pas <- cbind(human.exposure.total.multiple.runs(output.baseline.layer,
+                                                              pars.baseline.layer$beta,
+                                                              surveillance.layer.baseline, var = "pas.det.time"), scenario = "baseline")
+
+for(k in c(1:12))
+{
+  humanexposure.pas <- rbind(humanexposure.pas,
+                             cbind(human.exposure.total.multiple.runs(output.layer[[k]],
+                                                                      pars.layer[[k]]$beta,
+                                                                      surveillance.layer%>%filter(scenario == pars.layer[[k]]$scenario), var = "pas.det.time"), scenario = pars.layer[[k]]$scenario))
+  
+}
 
 
-baseline.average.det <- mean(unlist(humanexposure.pas%>%filter(scenario = "baseline_layer")%>%select("detection.exposure")))
-baseline.average.tot <- mean(unlist(humanexposure.pas%>%filter(scenario = "baseline_layer")%>%select("total.exposure")))
+
+baseline.average.det <- mean(unlist(humanexposure.pas%>%filter(scenario == "baseline")%>%select("detection.exposure")))
+baseline.average.tot <- mean(unlist(humanexposure.pas%>%filter(scenario == "baseline")%>%select("total.exposure")))
 humanexposure.pas$ratio.det <- humanexposure.pas$detection.exposure/baseline.average.det
 humanexposure.pas$ratio.tot <- humanexposure.pas$total.exposure/baseline.average.tot
 
 
 ggplot(humanexposure.pas)+geom_point(aes(x = detection.time, y = ratio.det, colour = scenario))
-scenario.label <- list("baseline" = "Baseline",
-                       "HighTitre60perc" = "60% - Slow",
-                       "HighTitre60percHighWaning" = "60% - Fast",
-                       "HighTitre60percNoWaning" = "60% - No")
+
 ggplot(humanexposure.pas) +
-  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = scenario),binwidth = .15)+
+  geom_histogram(aes(log10(ratio.det),after_stat(.15*density), fill = scenario),binwidth = .15)+
   xlab("Risk ratio of exposure \n (reference baseline)") + 
   ylab("Proportion")+
-  geom_vline(xintercept = 1)+
-  facet_grid(scenario~., labeller =  function(variable, value){
-    return(scenario.label[value])
-  }) +ggtitle("Human exposure")+theme(legend.position = 'none')
-ggsave("./output/figures/humanexposurelayer.pas.png")
-
-
-#active detection
-humanexposure.ac <- cbind(human.exposure.total.multiple.runs(output.baseline.layer,pars.baseline.layer$beta,surveillance.layer%>%filter(scenario == "baseline_layer"), var = "ac.det.time", rep = 10), scenario = "baseline")
-humanexposure.ac <- rbind(humanexposure.ac,
-                           cbind(human.exposure.total.multiple.runs(output.60percHighTitre.layer,
-                                                                    pars.60percHighTitre.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre60perc_layer"), var = "ac.det.time", rep = 10), scenario = "HighTitre60perc"))
-humanexposure.ac <- rbind(humanexposure.ac,
-                           cbind(human.exposure.total.multiple.runs(output.60percHighTitreHighWaning.layer,
-                                                                    pars.60percHighTitreHighWaning.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre60percHighWaning"), var = "ac.det.time", rep = 10), scenario = "HighTitre60percHighWaning"))
-humanexposure.ac <- rbind(humanexposure.ac,
-                           cbind(human.exposure.total.multiple.runs(output.60percHighTitreNoWaning.layer,
-                                                                    pars.60percHighTitreNoWaning.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre60percNoWaning"), var = "ac.det.time", rep = 10), scenario = "HighTitre60percNoWaning"))
-
-
-baseline.average.det <- mean(unlist(humanexposure.ac%>%filter(scenario = "baseline_layer")%>%select("detection.exposure")))
-baseline.average.tot <- mean(unlist(humanexposure.ac%>%filter(scenario = "baseline_layer")%>%select("total.exposure")))
-humanexposure.ac$ratio.det <- humanexposure.ac$detection.exposure/baseline.average.det
-humanexposure.ac$ratio.tot <- humanexposure.ac$total.exposure/baseline.average.tot
-
-
-ggplot(humanexposure.ac)+geom_point(aes(x = detection.time, y = ratio.det, colour = scenario))
-scenario.label <- list("baseline" = "Baseline",
-                       "HighTitre60perc" = "60% - Slow",
-                       "HighTitre60percHighWaning" = "60% - Fast",
-                       "HighTitre60percNoWaning" = "60% - No")
-ggplot(humanexposure.ac) +
-  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = scenario),binwidth = .15)+
-  xlab("Risk ratio of exposure \n (reference baseline)") + 
-  ylab("Proportion")+
-  geom_vline(xintercept = 1)+
-  facet_grid(scenario~., labeller =  function(variable, value){
-    return(scenario.label[value])
-  }) +ggtitle("Human exposure")+theme(legend.position = 'none')
-ggsave("./output/figures/humanexposurelayer.ac.png")
-
-# 90% high titre ####
-
-#load simulations
-
-output.90percHighTitre.layer <- load.sims("./output/HighTitre90perc_layer", interval = 0.1)$output
-#output.60percHighTitreHighWaning.layer <- load.sims("./output/HighTitre60percHighWaning_layer", interval = 0.1)$output
-output.90percHighTitreNoWaning.layer <- load.sims("./output/HighTitre90percNoWaning_layer", interval = 0.1)$output
-
-#load parameters (assuming all parameter lists are equal within a folder)
-pars.90percHighTitre.layer <- load.sims("./output/HighTitre90perc_layer", params = TRUE)$pars[[1]]
-#pars.90percHighTitreHighWaning.layer <- load.sims("./output/HighTitre90percHighWaning_layer", params = TRUE)$pars[[1]]
-pars.90percHighTitreNoWaning.layer <- load.sims("./output/HighTitre90percNoWaning_layer", params = TRUE)$pars[[1]]
-
-
-#visualize
-plot.output(output.90percHighTitre.layer,c("I.1","I.2","R.1","R.2"), "Layer 90% high titre")
-ggsave("./output/figures/HighTitre90preclayer.png")
-plot.output(output.90percHighTitre.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 90% high titre")
-ggsave("./output/figures/HighTitre90preclayerdeaths.png")
-gc()
-# plot.output(output.90percHighTitreHighWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 90% high titre / High waning")
-# ggsave("./output/figures/HighTitre90precHighWaninglayer.png")
-# plot.output(output.90percHighTitreHighWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 90% high titre / High waning")
-# ggsave("./output/figures/HighTitre90precHighWaninglayerdeaths.png")
-# gc()
-plot.output(output.90percHighTitreNoWaning.layer,c("I.1","I.2","R.1","R.2"), "Layer 90% high titre / no waning")
-ggsave("./output/figures/HighTitre90preclayerNoWaning.png")
-plot.output(output.90percHighTitreNoWaning.layer,c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"), "Layer 90% high titre / no waning")
-ggsave("./output/figures/HighTitre90preclayerNoWaningdeaths.png")
-gc()
-
-#surveillance
-N0 <- pars.baseline.layer$N0
-reps <- 10;
-rm(surveillance.layer)
-surveillance.layer <-cbind(detection.times.surveillance(output.baseline.layer, 
-                                                        c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-                                                        time.interval = 1,
-                                                        ints = 2,
-                                                        threshold = 0.005*N0,
-                                                        c("DI.1","DI.2","DR.1","DR.2"), 
-                                                        pfarm = 1., 
-                                                        panimal = .001,
-                                                        se = 0.9,
-                                                        Detectables.incidence = TRUE,
-                                                        reps = reps),
-                           scenario = "baseline_layer");
-
-N0 <- pars.90percHighTitre.layer$N0
-surveillance.layer <-rbind(surveillance.layer, cbind(detection.times.surveillance(output.90percHighTitre.layer, 
-                                                                                  c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-                                                                                  time.interval = 1,
-                                                                                  ints = 2,
-                                                                                  threshold = 0.005*N0,
-                                                                                  c("DI.1","DI.2","DR.1","DR.2"), 
-                                                                                  pfarm = 1., 
-                                                                                  panimal = .001,
-                                                                                  se = 0.9,
-                                                                                  Detectables.incidence = TRUE,
-                                                                                  reps = reps),
-                                                     scenario = "HighTitre90perc_layer"));
-
-
-# N0 <- pars.90percHighTitreHighWaning.layer$N0
-# surveillance.layer <-rbind(surveillance.layer, cbind(detection.times.surveillance(output.90percHighTitreHighWaning.layer, 
-#                                                                                   c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-#                                                                                   time.interval = 1,
-#                                                                                   ints = 2,
-#                                                                                   threshold = 0.005*N0,
-#                                                                                   c("DI.1","DI.2","DR.1","DR.2"), 
-#                                                                                   pfarm = 1., 
-#                                                                                   panimal = .001,
-#                                                                                   se = 0.9,
-#                                                                                   Detectables.incidence = TRUE,
-#                                                                                   reps = reps),
-#                                                      scenario = "HighTitre90percHighWaning"));
-# 
-
-
-
-N0 <- pars.90percHighTitreNoWaning.layer$N0
-
-surveillance.layer <-rbind(surveillance.layer, cbind(detection.times.surveillance(output.90percHighTitreNoWaning.layer, 
-                                                                                  c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-                                                                                  time.interval = 1,
-                                                                                  ints = 2,
-                                                                                  threshold = 0.005*N0,
-                                                                                  c("DI.1","DI.2","DR.1","DR.2"), 
-                                                                                  pfarm = 1., 
-                                                                                  panimal = .001,
-                                                                                  se = 0.9,
-                                                                                  Detectables.incidence = TRUE,
-                                                                                  reps = reps),  
-                                                     scenario = "HighTitre90percNoWaning"));
-
-
-scenario.label <- list("baseline_layer" = "Baseline",
-                       "HighTitre90perc_layer" = "90% - Slow",
-#                       "HighTitre90percHighWaning" = "90% - Fast",
-                       "HighTitre90percNoWaning" = "90% - No")
-
-
-ggplot(data = surveillance.layer%>%filter(scenario != "baseline_layer") )+
-  geom_histogram(aes(x = pas.det.time, y=..count../sum(..count..)),    colour = "black", 
-                 fill = "black", 
-                 alpha = 0.5, binwidth = 1.0)+
-  geom_histogram(aes(ac.det.time, y=..count../sum(..count..)),colour = "black", 
-                 fill = "orange",
-                 alpha = 0.5, binwidth = 1.0)+
-  geom_density(aes(min.det.time,after_stat(count/length(min.det.times$run))),
-               colour = "red",
-               linewidth = 1,
-               bw = 1)+
-  xlab("Detection time")+
-  ylab("Proportion of runs")+
-  ggtitle("Active and passive surveillance")+
-  facet_grid(scenario~., labeller =  function(variable,value){
-    return(scenario.label[value])
-  })
-ggsave("./output/figures/scenarios_layer_surveillance90perc.png")
-
-
-#human exposure
-rm(humanexposure.min)
-sim.runs <- length(unique(output.baseline.layer$run))
-#as we used multiple repeats to determine active surveillance repeat
-humanexposure.min <- cbind(human.exposure.total.multiple.runs(output.baseline.layer,pars.baseline.layer$beta,surveillance.layer%>%filter(scenario == "baseline_layer"), var = "min.det.time", rep = 10), scenario = "baseline")
-humanexposure.min <- rbind(humanexposure.min,
-                           cbind(human.exposure.total.multiple.runs(output.90percHighTitre.layer,
-                                                                    pars.90percHighTitre.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre90perc_layer"), var = "min.det.time", rep = 10), scenario = "HighTitre90perc"))
-# humanexposure.min <- rbind(humanexposure.min,
-#                            cbind(human.exposure.total.multiple.runs(output.90percHighTitreHighWaning.layer,
-#                                                                     pars.90percHighTitreHighWaning.layer$beta,
-#                                                                     surveillance.layer%>%filter(scenario == "HighTitre90percHighWaning"), var = "min.det.time", rep = 10), scenario = "HighTitre90percHighWaning"))
-humanexposure.min <- rbind(humanexposure.min,
-                           cbind(human.exposure.total.multiple.runs(output.90percHighTitreNoWaning.layer,
-                                                                    pars.90percHighTitreNoWaning.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre90percNoWaning"), var = "min.det.time", rep = 10), scenario = "HighTitre90percNoWaning"))
-
-
-baseline.average.det <- mean(unlist(humanexposure.min%>%filter(scenario == "baseline")%>%select("detection.exposure")))
-baseline.average.tot <- mean(unlist(humanexposure.min%>%filter(scenario == "baseline")%>%select("total.exposure")))
-humanexposure.min$ratio.det <- humanexposure.min$detection.exposure/baseline.average.det
-humanexposure.min$ratio.tot <- humanexposure.min$total.exposure/baseline.average.tot
-
-
-ggplot(humanexposure.min)+geom_point(aes(x = detection.time, y = ratio.det, colour = scenario))
-scenario.label <- list("baseline" = "Baseline",
-                       "HighTitre90perc" = "90% - Slow",
-  #                     "HighTitre90percHighWaning" = "90% - Fast",
-                       "HighTitre90percNoWaning" = "90% - No")
-ggplot(humanexposure.min) +
-  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = scenario),binwidth = .15)+
-  xlab("Risk ratio of exposure \n (reference baseline)") + 
-  ylab("Proportion")+
-  geom_vline(xintercept = 1)+
-  facet_grid(scenario~., labeller =  function(variable, value){
-    return(scenario.label[value])
-  }) +ggtitle("Human exposure")+theme(legend.position = 'none')
-ggsave("./output/figures/humanexposurelayer90perc.png")
+  geom_vline(xintercept = log10(1))+
+  facet_grid(scenario~.)+#, labeller =  function(variable, value){
+  #return(scenario.label[value])}) 
+  ggtitle("Human exposure")+theme(legend.position = 'none')
+ggsave("./output/figures/humanexposurelayerPassive.png")
 
 #average ratios
-humanexposure.min%>%reframe(.by = scenario,
+humanexposure.pas%>%reframe(.by = scenario,
                             mean = mean(ratio.det),
                             min = min(ratio.det),
                             max = max(ratio.det),
@@ -472,78 +243,48 @@ humanexposure.min%>%reframe(.by = scenario,
                             perc75 =quantile(ratio.det,0.75)
 )
 
-
-#passive detection
-humanexposure.pas <- cbind(human.exposure.total.multiple.runs(output.baseline.layer,pars.baseline.layer$beta,surveillance.layer%>%filter(scenario == "baseline_layer"), var = "pas.det.time", rep = 1), scenario = "baseline")
-humanexposure.pas <- rbind(humanexposure.pas,
-                           cbind(human.exposure.total.multiple.runs(output.90percHighTitre.layer,
-                                                                    pars.90percHighTitre.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre90perc_layer"), var = "pas.det.time", rep = 1), scenario = "HighTitre90perc"))
-# humanexposure.pas <- rbind(humanexposure.pas,
-#                            cbind(human.exposure.total.multiple.runs(output.90percHighTitreHighWaning.layer,
-#                                                                     pars.90percHighTitreHighWaning.layer$beta,
-#                                                                     surveillance.layer%>%filter(scenario == "HighTitre90percHighWaning"), var = "pas.det.time", rep = 1), scenario = "HighTitre90percHighWaning"))
-humanexposure.pas <- rbind(humanexposure.pas,
-                           cbind(human.exposure.total.multiple.runs(output.90percHighTitreNoWaning.layer,
-                                                                    pars.90percHighTitreNoWaning.layer$beta,
-                                                                    surveillance.layer%>%filter(scenario == "HighTitre90percNoWaning"), var = "pas.det.time", rep = 1), scenario = "HighTitre90percNoWaning"))
-
-
-baseline.average.det <- mean(unlist(humanexposure.pas%>%filter(scenario = "baseline_layer")%>%select("detection.exposure")))
-baseline.average.tot <- mean(unlist(humanexposure.pas%>%filter(scenario = "baseline_layer")%>%select("total.exposure")))
-humanexposure.pas$ratio.det <- humanexposure.pas$detection.exposure/baseline.average.det
-humanexposure.pas$ratio.tot <- humanexposure.pas$total.exposure/baseline.average.tot
-
-
-ggplot(humanexposure.pas)+geom_point(aes(x = detection.time, y = ratio.det, colour = scenario))
-scenario.label <- list("baseline" = "Baseline",
-                       "HighTitre90perc" = "90% - Slow",
-#                       "HighTitre90percHighWaning" = "90% - Fast",
-                       "HighTitre90percNoWaning" = "90% - No")
-ggplot(humanexposure.pas) +
-  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = scenario),binwidth = .15)+
-  xlab("Risk ratio of exposure \n (reference baseline)") + 
-  ylab("Proportion")+
-  geom_vline(xintercept = 1)+
-  facet_grid(scenario~., labeller =  function(variable, value){
-    return(scenario.label[value])
-  }) +ggtitle("Human exposure")+theme(legend.position = 'none')
-ggsave("./output/figures/humanexposurelayer90perc.pas.png")
-
-
 #active detection
-humanexposure.ac <- cbind(human.exposure.total.multiple.runs(output.baseline.layer,pars.baseline.layer$beta,surveillance.layer%>%filter(scenario == "baseline_layer"), var = "ac.det.time", rep = 10), scenario = "baseline")
-humanexposure.ac <- rbind(humanexposure.ac,
-                          cbind(human.exposure.total.multiple.runs(output.90percHighTitre.layer,
-                                                                   pars.90percHighTitre.layer$beta,
-                                                                   surveillance.layer%>%filter(scenario == "HighTitre90perc_layer"), var = "ac.det.time", rep = 10), scenario = "HighTitre90perc"))
-# humanexposure.ac <- rbind(humanexposure.ac,
-#                           cbind(human.exposure.total.multiple.runs(output.90percHighTitreHighWaning.layer,
-#                                                                    pars.90percHighTitreHighWaning.layer$beta,
-#                                                                    surveillance.layer%>%filter(scenario == "HighTitre90percHighWaning"), var = "ac.det.time", rep = 10), scenario = "HighTitre90percHighWaning"))
-humanexposure.ac <- rbind(humanexposure.ac,
-                          cbind(human.exposure.total.multiple.runs(output.90percHighTitreNoWaning.layer,
-                                                                   pars.90percHighTitreNoWaning.layer$beta,
-                                                                   surveillance.layer%>%filter(scenario == "HighTitre90percNoWaning"), var = "ac.det.time", rep = 10), scenario = "HighTitre90percNoWaning"))
+rm(humanexposure.ac)
+#as we used multiple repeats to determine active surveillance repeat
+humanexposure.ac <- cbind(human.exposure.total.multiple.runs(output.baseline.layer,
+                                                              pars.baseline.layer$beta,
+                                                              surveillance.layer.baseline, var = "ac.det.time"), scenario = "baseline")
+
+for(k in c(1:12))
+{
+  humanexposure.ac <- rbind(humanexposure.ac,
+                             cbind(human.exposure.total.multiple.runs(output.layer[[k]],
+                                                                      pars.layer[[k]]$beta,
+                                                                      surveillance.layer%>%filter(scenario == pars.layer[[k]]$scenario), var = "ac.det.time"), scenario = pars.layer[[k]]$scenario))
+  
+}
 
 
-baseline.average.det <- mean(unlist(humanexposure.ac%>%filter(scenario = "baseline_layer")%>%select("detection.exposure")))
-baseline.average.tot <- mean(unlist(humanexposure.ac%>%filter(scenario = "baseline_layer")%>%select("total.exposure")))
+
+baseline.average.det <- mean(unlist(humanexposure.ac%>%filter(scenario == "baseline")%>%select("detection.exposure")))
+baseline.average.tot <- mean(unlist(humanexposure.ac%>%filter(scenario == "baseline")%>%select("total.exposure")))
 humanexposure.ac$ratio.det <- humanexposure.ac$detection.exposure/baseline.average.det
 humanexposure.ac$ratio.tot <- humanexposure.ac$total.exposure/baseline.average.tot
 
 
 ggplot(humanexposure.ac)+geom_point(aes(x = detection.time, y = ratio.det, colour = scenario))
-scenario.label <- list("baseline" = "Baseline",
-                       "HighTitre90perc" = "90% - Slow",
-  #                     "HighTitre90percHighWaning" = "90% - Fast",
-                       "HighTitre90percNoWaning" = "90% - No")
+
 ggplot(humanexposure.ac) +
-  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = scenario),binwidth = .15)+
+  geom_histogram(aes(log10(ratio.det),after_stat(.15*density), fill = scenario),binwidth = .15)+
   xlab("Risk ratio of exposure \n (reference baseline)") + 
   ylab("Proportion")+
-  geom_vline(xintercept = 1)+
-  facet_grid(scenario~., labeller =  function(variable, value){
-    return(scenario.label[value])
-  }) +ggtitle("Human exposure")+theme(legend.position = 'none')
-ggsave("./output/figures/humanexposurelayer90perc.ac.png")
+  geom_vline(xintercept = log10(1))+
+  facet_grid(scenario~.)+#, labeller =  function(variable, value){
+  #return(scenario.label[value])}) 
+  ggtitle("Human exposure")+theme(legend.position = 'none')
+ggsave("./output/figures/humanexposurelayerActive.png")
+
+#average ratios
+humanexposure.ac%>%reframe(.by = scenario,
+                            mean = mean(ratio.det),
+                            min = min(ratio.det),
+                            max = max(ratio.det),
+                            perc25 = quantile(ratio.det,0.25),
+                            perc75 =quantile(ratio.det,0.75)
+)
+

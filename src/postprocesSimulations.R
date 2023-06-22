@@ -61,6 +61,14 @@ plot.output.sparse <- function(output,vars,title = NULL, frac = 0.5){
   return(plot.output(out, vars, title))
 }
 
+plot.output.grid <- function(output,vars,grid.vars = "scenario",title = NULL ){
+  ggplot(data =
+           data.frame(output)%>%select(all_of(c(vars,"time", "run",vars)))%>%reshape2::melt(id.vars = c(vars,"time","run"),value.name = "prevalence",variable.name=c("itype")))+
+    geom_step(aes(x = time, y = prevalence,colour = itype, group =run))+
+    ylab("#number of birds")+facet_grid(.~itype, scales = "free")+facet_grid(vars[1]~if(length(vars)==2){vars[2]}else{.})+ggtitle(title)
+  
+}
+
 # 
 # #human exposure ####
 # #Assumption of exposure is that the rate at which humans get exposed to infection is proportionate to the infectivity towards chickens
@@ -100,17 +108,19 @@ human.exposure.timeseries <- function(output, beta.human){
   
 }
 
-human.exposure.total.multiple.runs<- function(output, beta.human,detection.time,var = "min.det.time", reps = 1)
+human.exposure.total.multiple.runs<- function(output, beta.human,detection.time,var.det = "min.det.time")
 {
   if(is.null(detection.time$rep))detection.time$rep <- 1;
   exposure<- data.frame(output)%>% group_by(run)%>%reframe(total.exposure = sum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt))
   exp.det<-c();
   for(i in exposure$run){
+    reps <- detection.time%>%filter(run == i)%>%select("rep")%>%max
     for(j in c(1:reps))
     {
-      exp.det<-rbind(exp.det, data.frame(output)%>%filter(run == i & time<= detection.time[detection.time$run == i & detection.time$rep == j, var])%>%reframe(run = i,
-                                                                                                                                                          rep = j,
-                                                                                                                                                          detection.time = detection.time[detection.time$run == i & detection.time$rep == j, var],
+      dettime <-  detection.time[detection.time$run == i & detection.time$rep == j, var.det];
+      exp.det<-rbind(exp.det, data.frame(output)%>%filter(run == i & time<=dettime)%>%reframe(run = i,
+                                rep = j,
+                                detection.time = dettime,
         detection.exposure = sum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt),
         cum.I.1 = sum(I.1*dt),
         cum.I.2 = sum(I.2*dt)))
@@ -119,7 +129,4 @@ human.exposure.total.multiple.runs<- function(output, beta.human,detection.time,
   exposure<- cbind( data.frame(exp.det),data.frame(total.exposure = rep(exposure$total.exposure, each = reps)))
   return(exposure)
 }
-# ggplot(data = exposure.human) + geom_path(aes(x = time, y = psurvdt, group = run))
-# ggplot(data = exposure.human) + geom_path(aes(x = time, y = pinf, group = run))
-
 

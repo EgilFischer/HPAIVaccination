@@ -21,7 +21,7 @@ itypes = 2;
 #Baseline parameters for layer flock ####
 param.list.baseline.layer <- list(
   scenario = "baseline_Layer", #scenario
-  runs = 10, #number of runs
+  runs = 40, #number of runs
   max.time = 17*30,#length of the run
   itypes = itypes, #type
   N0 = 45000, #population size - agramatie website

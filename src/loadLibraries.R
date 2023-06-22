@@ -1,5 +1,5 @@
 # loading required libraries ####
-packages <- c("ggplot2","dplyr","tidyverse","readr","rootSolve")
+packages <- c("ggplot2","dplyr","tidyverse","readr","rootSolve","readxl")
 
 
 ## Now load or install&load all
