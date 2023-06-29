@@ -11,10 +11,22 @@ load("configuration_points_200X200_whittle.Rdata")
 #
 spatial.input<- read_excel("./input/20230404_AI_AnimalLocations_SizeType_v02.xlsx", sheet = 2)
 
+#set random vaccination status between 0 (fully susceptible -> pmajor = 0) and 1 (fully immune -> pmajor =1)
+spatial.input$vacstat <- sapply(spatial.input$TYPE,function(x){ifelse(x == "LAYER",runif(1),0)})
+#set the infectious period distribution 
+Tdist = function(vacstat){
+  shape = 14.5; rate = 1.2;
+  if(vacstat<=0.9){shape = 14; rate = 1.2;}
+  if(vacstat<=0.3){shape = 49; rate = 5.0;}
+  if(vacstat<=0.02){shape = 192; rate = 23;}
+  return(rgamma(1, shape= shape, rate = rate))
+}
+
 #scale coordinates to km
 spatial.input$X <- spatial.input$X/1000
 spatial.input$Y <- spatial.input$Y/1000
 spatial.input$nr <- c(1:nrow(spatial.input))
+
 #visualise 
 plot(spatial.input$X,spatial.input$Y)
 points(spatial.input$X[K],spatial.input$Y[K], col = "red",pch = 15)
@@ -26,7 +38,8 @@ Q_init_matrix <- matrix(0,nrow=numsim,ncol=totpoints)
 T_inf_matrix <- matrix(0,nrow=numsim,ncol=totpoints)
 for (ii in 1:numsim){
  Q_init_matrix[ii,] <- rexp(totpoints, rate = 1)
- T_inf_matrix[ii,] <- rgamma(totpoints,10, scale=7/10)
+ #infectious period is determined by the vaccination status
+ T_inf_matrix[ii,] <- sapply(spatial.input$vacstat, Tdist)
  }
 
 # Select one point pattern (x and y coordinates) out of the 25. The matrix has 50  columns, because there are x and y coordinates for each point
@@ -51,7 +64,12 @@ beta<-1;
 
 # Create an hazard matrix evaluating for each host j the chance to be infected by host i as a function of distance
 hazardmatrix <- as.matrix(apply(distancematrix,MARGIN=c(1,2),FUN=h_kernel));
+#discount hazard by vaccination
+hazardmatrix <- t(t(hazardmatrix)*spatial.input$vacstat)
 diag(hazardmatrix) <- matrix(0,nrow=totpoints); # because the chance of infecting itself is 0
+
+
+
 
 # Model the transmission event between hosts
 # Define the function handling the events in the spatial transmission model

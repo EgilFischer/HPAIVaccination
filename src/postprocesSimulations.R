@@ -61,11 +61,11 @@ plot.output.sparse <- function(output,vars,title = NULL, frac = 0.5){
   return(plot.output(out, vars, title))
 }
 
-plot.output.grid <- function(output,vars,grid.vars = "scenario",title = NULL ){
-  ggplot(data =
-           data.frame(output)%>%select(all_of(c(vars,"time", "run",vars)))%>%reshape2::melt(id.vars = c(vars,"time","run"),value.name = "prevalence",variable.name=c("itype")))+
+plot.output.grid <- function(output,vars,title = NULL ){
+    ggplot(data =
+           data.frame(output)%>%select(all_of(c(vars,"time", "run","scenario")))%>%reshape2::melt(id.vars = c("time","run","scenario"),value.name = "prevalence",variable.name=c("itype")))+
     geom_step(aes(x = time, y = prevalence,colour = itype, group =run))+
-    ylab("#number of birds")+facet_grid(.~itype, scales = "free")+facet_grid(vars[1]~if(length(vars)==2){vars[2]}else{.})+ggtitle(title)
+    ylab("#number of birds")+facet_grid(scenario~itype)+ggtitle(title)
   
 }
 
