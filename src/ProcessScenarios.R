@@ -15,8 +15,8 @@ source("./src/probMajorOutbreak.R")
 #Baseline ####
 #load baseline simulations 
 rm(output.baseline.layer, output.baseline.broiler)
-output.baseline.layer <- load.sims("./output/baseline_Layer2", interval = 0.001)$output
-output.baseline.broiler <- load.sims("./output/baseline_Broiler", interval = 0.001)$output
+output.baseline.layer <- load.sims("./output/baseline_Layer2", interval = 0.01)$output
+output.baseline.broiler <- load.sims("./output/baseline_Broiler", interval = 0.01)$output
 
 #load baseline parameters (assuming all parameter lists are equal within a folder)
 pars.baseline.layer <- load.sims("./output/baseline_Layer2", params = TRUE)$pars[[1]]
@@ -104,11 +104,9 @@ surveillance.broiler.baseline <- cbind(repeat.detection.time.surveillance(output
                                      scenario = pars.baseline.broiler$scenario)
 
 ggplot(data = surveillance.layer.baseline)+
-  geom_histogram(aes(x = pas.det.time, y=..count../sum(..count..), fill ="Passive", colour = "black" ),
-                 
+  geom_histogram(aes(x = pas.det.time, y=..count../sum(..count..), fill ="Passive"), colour = "black",
                  alpha = 0.5, binwidth = 1.0)+
-  geom_histogram(aes(ac.det.time, y=..count../sum(..count..),fill = "Active", colour = "black"), 
-                 
+  geom_histogram(aes(ac.det.time, y=..count../sum(..count..),fill = "Active"), colour = "black", 
                  alpha = 0.5, binwidth = 1.0)+
   geom_density(aes(min.det.time,after_stat(..density..), colour = "Minimum"),
                linewidth = 1.0,
@@ -142,7 +140,7 @@ ggsave("./output/figures/baseline_broiler_surveillance.png")
 
 
 
-#Layer scenarios ####
+#Layer scenarios with waning ####
 output.layer <- lapply(c(1:12),function(i){load.sims(paste0("./output/",gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)$output})
 pars.layer <- lapply(c(1:12),function(i){load.sims(paste0("./output/",gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)}$pars[[1]])
 
@@ -357,24 +355,31 @@ humanexposure.ac.layer%>%reframe(.by = scenario,
 )
 
 
+
 #Scenarios with clinical protection ####
-scenario.clinprot.list <- list(list(scenario = "layerClinic50Phigh50"),list(scenario = "layerClinic50Phigh0"))
-output.layer.clinprot <- lapply(c(1:2),function(i){load.sims(paste0("./output/",gsub(scenario.clinprot.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)$output})
-pars.layer.clinprot <- lapply(c(1:2),function(i){load.sims(paste0("./output/",gsub(scenario.clinprot.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)}$pars[[1]])
+scenario.clinprot.list <- list(list(scenario = "layerClinic50Phigh50"),list(scenario = "layerClinic50Phigh0"),list(scenario = "layerClinic05Phigh0"))
+output.layer.clinprot <- lapply(c(1:3),function(i){load.sims(paste0("./output/",gsub(scenario.clinprot.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.01)$output})
+pars.layer.clinprot <- lapply(c(1:3),function(i){load.sims(paste0("./output/",gsub(scenario.clinprot.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.01)}$pars[[1]])
 
 #visualize ####
-for(i in c(1:2)){
+for(i in c(1:3)){
   show(plot.output(output.layer.clinprot[[i]],c("I.1","I.2","R.1","R.2"), scenario.clinprot.list[[i]]$scenario))
   ggsave(paste0("./output/figures/", gsub(scenario.clinprot.list[[i]]$scenario.clinprot,pattern = "[.]", replacement = ""),".png"))
   gc()  
 }
 
+plot.output.grid(rbind(cbind(output.layer.clinprot[[1]],scenario = pars.layer.clinprot[[1]]$scenario),
+                       cbind(output.layer.clinprot[[2]],scenario = pars.layer.clinprot[[2]]$scenario),
+                       cbind(output.layer.clinprot[[3]],scenario = pars.layer.clinprot[[3]]$scenario)), 
+                 vars =c("I.1","I.2","R.1","R.2"),
+                 title = "Clinical protection")
+ggsave(file = "./output/figures/clinicalprotectionLayer.png")
 
 #surveillance ####
 reps <- 100;
 
 rm(surveillance.layer.clinprot)
-for(i in c(1:2)){
+for(i in c(1:3)){
   tmp <- cbind(repeat.detection.time.surveillance(output.layer.clinprot[[i]],
                                                   reps = reps,
                                                   deaths.vars  = c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
@@ -428,7 +433,7 @@ humanexposure.min.layer <- cbind(human.exposure.total.multiple.runs(output.basel
                                                               pars.baseline.layer$beta,
                                                               surveillance.layer.baseline, var = "min.det.time"), scenario = "baseline")
 
-for(k in c(1:2)){
+for(k in c(1:3)){
   humanexposure.min.layer <- rbind(humanexposure.min.layer,
                              cbind(human.exposure.total.multiple.runs(output.layer.clinprot[[k]],
                                                                       pars.layer.clinprot[[k]]$beta,
@@ -446,15 +451,19 @@ humanexposure.min.layer$ratio.tot <- humanexposure.min.layer$total.exposure/base
 
 ggplot(humanexposure.min.layer)+geom_point(aes(x = detection.time, y = ratio.det, colour = scenario))
 
+scenario.label <- list(baseline = "Baseline",
+                       layerClinic50Phigh50 = "Clinic 50% \n High titre 50%",
+                       layerClinic50Phigh0 = "Clinic 50% \n High titre 0%",
+                       layerClinic0.5Phigh0 = "Clinic 0.5% \n High titre 0%")
 ggplot(humanexposure.min.layer) +
-  geom_histogram(aes(log10(ratio.det),after_stat(.15*density), fill = scenario),binwidth = .15)+
+  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = scenario),binwidth = .5)+
   xlab("Risk ratio of exposure \n (reference baseline)") + 
   ylab("Proportion")+
-  geom_vline(xintercept = log10(1))+
-  facet_grid(scenario~.)+#, labeller =  function(variable, value){
-  #return(scenario.label[value])}) 
-  ggtitle("Human exposure")+theme(legend.position = 'none')
-ggsave("./output/figures/humanexposurelayer.clinprot.png")
+  geom_vline(xintercept = 1)+
+  facet_grid(scenario~., labeller =  function(variable, value){
+    return(scenario.label[value])}) +
+  ggtitle("Human exposure layers \n passive and active detection")+theme(legend.position = 'none')
+ggsave("./output/figures/humanexposurelayer.clinprot.min.png")
 
 #average ratios
 humanexposure.min.layer%>%reframe(.by = scenario,
@@ -466,19 +475,19 @@ humanexposure.min.layer%>%reframe(.by = scenario,
 )
 
 
-#passive detection
+#passive detection####
 rm(humanexposure.pas.layer)
 #as we used multiple repeats to determine active surveillance repeat
 humanexposure.pas.layer <- cbind(human.exposure.total.multiple.runs(output.baseline.layer,
                                                               pars.baseline.layer$beta,
-                                                              surveillance.layer.baseline, var = "pas.det.time"), scenario = "baseline")
+                                                              surveillance.layer.baseline, var = "pas.det.time"), 
+                                 scenario = "baseline")
 
-for(k in c(1:12))
-{
+for(k in c(1:3)){
   humanexposure.pas.layer <- rbind(humanexposure.pas.layer,
-                             cbind(human.exposure.total.multiple.runs(output.layer.clinprot[[k]],
-                                                                      pars.layer.clinprot[[k]]$beta,
-                                                                      surveillance.layer.clinprot%>%filter(scenario == pars.layer.clinprot[[k]]$scenario), var = "pas.det.time"), scenario = pars.layer.clinprot[[k]]$scenario))
+                                   cbind(human.exposure.total.multiple.runs(output.layer.clinprot[[k]],
+                                                                            pars.layer.clinprot[[k]]$beta,
+                                                                            surveillance.layer.clinprot%>%filter(scenario == pars.layer.clinprot[[k]]$scenario), var = "pas.det.time"), scenario = pars.layer.clinprot[[k]]$scenario))
   
 }
 
@@ -491,24 +500,27 @@ humanexposure.pas.layer$ratio.tot <- humanexposure.pas.layer$total.exposure/base
 
 
 ggplot(humanexposure.pas.layer)+geom_point(aes(x = detection.time, y = ratio.det, colour = scenario))
-
+scenario.label <- list(baseline = "Baseline",
+                       layerClinic50Phigh50 = "Clinic 50% \n High titre 50%",
+                       layerClinic50Phigh0 = "Clinic 50% \n High titre 0%",
+                       layerClinic0.5Phigh0 = "Clinic 0.5% \n High titre 0%")
 ggplot(humanexposure.pas.layer) +
-  geom_histogram(aes(log10(ratio.det),after_stat(.15*density), fill = scenario),binwidth = .15)+
+  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = scenario),binwidth = .5)+
   xlab("Risk ratio of exposure \n (reference baseline)") + 
   ylab("Proportion")+
-  geom_vline(xintercept = log10(1))+
-  facet_grid(scenario~.)+#, labeller =  function(variable, value){
-  #return(scenario.label[value])}) 
-  ggtitle("Human exposure")+theme(legend.position = 'none')
-ggsave("./output/figures/humanexposurelayer.clinprotPassive.png")
+  geom_vline(xintercept = 1)+
+  facet_grid(scenario~., labeller =  function(variable, value){
+  return(scenario.label[value])}) +
+  ggtitle("Human exposure layers passive detection")+theme(legend.position = 'none')
+ggsave("./output/figures/humanexposurelayer.clinprot.pas.png")
 
 #average ratios
 humanexposure.pas.layer%>%reframe(.by = scenario,
-                            mean = mean(ratio.det),
-                            min = min(ratio.det),
-                            max = max(ratio.det),
-                            perc25 = quantile(ratio.det,0.25),
-                            perc75 =quantile(ratio.det,0.75)
+                                  mean = mean(ratio.det),
+                                  min = min(ratio.det),
+                                  max = max(ratio.det),
+                                  perc25 = quantile(ratio.det,0.25),
+                                  perc75 =quantile(ratio.det,0.75)
 )
 
 #active detection
@@ -518,7 +530,7 @@ humanexposure.ac.layer <- cbind(human.exposure.total.multiple.runs(output.baseli
                                                              pars.baseline.layer$beta,
                                                              surveillance.layer.baseline, var = "ac.det.time"), scenario = "baseline")
 
-for(k in c(1:2))
+for(k in c(1:3))
 {
   humanexposure.ac.layer <- rbind(humanexposure.ac.layer,
                             cbind(human.exposure.total.multiple.runs(output.layer.clinprot[[k]],

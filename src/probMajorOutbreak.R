@@ -75,6 +75,18 @@ q1q2 <- function(param.list,...){
   return(dat)
 }
 
+pmajor <- function(param.list,p,n,...){
+  dat<- data.frame(p = p)
+  dat <- cbind(dat,data.frame(t( multiroot(f = model, start = c(.01,.01),
+                                                            rtol = 1E-17,
+                                                            parms = c(param.list,N = list(param.list$N0*c(1-p,p))))$root)))
+  dat$Rv <- Rmodel(param.list = param.list,p = p);
+  names(dat)<- c("p","q1","q2","Rv");
+  dat$pmajor <- 1-dat$q1^round(n*(1-p)) * dat$q2^round(n*p);
+  return(dat)
+}
+
+
 #test the exponential and gamma are equal if the variance is the square of the mean (e.g. shape has value 1) ####
 param.list <- param.list.baseline.layer
 param.list$gamma <- 1/param.list$infectious.period

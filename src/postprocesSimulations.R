@@ -26,12 +26,13 @@ load.sims <- function(path, interval = NULL, params = TRUE){
           tmp$run <- run.counter
           run.counter = run.counter+1
           tmp.output <- rbind(tmp.output,tmp)}
-        }else #merge into intervals
+        }else #merge into intervals and reset dt
         {
           tmp <- as.data.frame(readRDS(paste0(path,"/",i))$out);
           tmp$interval.index <- tmp$time%/%interval;
           tmp$tround <- interval*(tmp$interval.index+sign(tmp$time))
           tmp <- tmp%>%group_by(tround)%>%slice(n())%>%ungroup
+          tmp$dt <- c(0,tail(tmp$time,-1)-head(tmp$time,-1) )
             if(!exists("tmp.output")) {
               tmp.output <-tmp
               }else{ 
@@ -93,8 +94,8 @@ plot.output.grid <- function(output,vars,title = NULL ){
 human.exposure.timeseries.multiple.runs <- function(output, beta.human)
   {
   exposure<- data.frame(output)%>% group_by(run)%>%reframe(time = time,
-                                            I.1 = I.1,
-                                            I.2= I.2,
+                                                           cum.I.1 = sum(I.1*dt),
+                                                           cum.I.2 = sum(I.2*dt),
                                             cum.exposure = cumsum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt))
   return(exposure)
 }

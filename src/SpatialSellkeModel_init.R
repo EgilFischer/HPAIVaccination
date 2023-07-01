@@ -13,6 +13,7 @@ spatial.input<- read_excel("./input/20230404_AI_AnimalLocations_SizeType_v02.xls
 
 #set random vaccination status between 0 (fully susceptible -> pmajor = 0) and 1 (fully immune -> pmajor =1)
 spatial.input$vacstat <- sapply(spatial.input$TYPE,function(x){ifelse(x == "LAYER",runif(1),0)})
+spatial.input$pmajor <- sapply(spatial.input$vacstat, function(p){pmajor(param.list.baseline.layer, p,10)$pmajor})
 #set the infectious period distribution 
 Tdist = function(vacstat){
   shape = 14.5; rate = 1.2;
