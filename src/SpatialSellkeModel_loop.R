@@ -3,6 +3,7 @@
 Current <- Queue[1,]
 Queue <- Queue[-(1),] # remove this event from the Queue
 # update the status of that host
+
 # call the function Event. If the function event returns 1, then save it in the history vector
 status_id <- Status[Current[,3]]
 if (eval(event(Current[,1],Current[,2],status_id,Current[,3]))==1){ # If the function event returns a new event save it in the history, and draw it on the   map

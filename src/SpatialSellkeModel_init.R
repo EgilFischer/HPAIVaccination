@@ -55,6 +55,12 @@ Coord <-
   (complex(length.out=2,real=matrix_points$xcoord,imaginary=matrix_points$ycoord));
 distancematrix <- as.matrix(abs(outer(Coord,Coord,"-")))
 
+#define a matrix for preemptive culling
+culling.radius <- 3
+culling.delay <- 1
+cullingmatrix <- 1*(distancematrix<= culling.radius) #(times one keeps the matrix as it is and transforms boolean to numeric)
+diag(cullingmatrix) <- matrix(0,nrow=totpoints); #no culling because of detection by itself
+  
 # Define the transmission kernel and calculate the hazard matrix
 # Rescale the parameters h0 used in Boender et al. to account for the change in size and number of farms (see main text)
 h0 <- 0.002*5360/totpoints;
@@ -115,14 +121,50 @@ event <- function(time_event,eventype,statustype,id_){
                                                        id_host = next_infection_host))
     List_to_infect <<- List_to_infect[order(List_to_infect[,1]),]
     #update the list of hosts to remove
+    #check preemptive culling of this farm
+    if(!is.null(List_to_remove[List_to_remove$id_host==id_,])&length(List_to_remove[List_to_remove$id_host==id_,]$Event_time)>0)  {
+      #check if new removal is previous to culling
+      if(tt+T_inf[id_]< List_to_remove[List_to_remove$id_host==id_,]$Event_time){
+        #remove replace time 
+        List_to_remove[List_to_remove$id_host==id_,]$Event_time <<- tt+T_inf[id_];
+        }
+    }else{
+    #add this farm
     List_to_remove <<-
       rbind(List_to_remove,data.frame(Event_time=tt+T_inf[id_],Type_event=3,id_host=id_
       ))
+    }
+    #add additional preemptive culling
+    preemptivecul <- which(c(1:totpoints)*cullingmatrix[id_,]!=0)
+    for(iter in preemptivecul){
+      #check preemptive culling of this farm
+      if(!is.null(List_to_remove[List_to_remove$id_host==iter,])&length(List_to_remove[List_to_remove$id_host==iter,]$Event_time)>0)  {
+        #check if new removal is previous to culling
+        if(tt+T_inf[id_]+culling.delay< List_to_remove[List_to_remove$id_host==iter,]$Event_time){
+          #remove replace time
+          List_to_remove[List_to_remove$id_host==iter,]$Event_time <<- tt+T_inf[id_]+culling.delay;
+          List_to_remove[List_to_remove$id_host==iter,]$Type_event <<- 4;
+        }
+      }else{
+        #add this farm
+        List_to_remove <<-
+          rbind(List_to_remove,data.frame(Event_time=tt+T_inf[id_]+culling.delay,Type_event=4,id_host=iter
+          ))
+      }
+    }
+    #order removal list
     List_to_remove <<- List_to_remove[order(List_to_remove[,1]),]
     return(1)} else if (eventype==2 & statustype==2) {# already infected
       return(0)} else if (eventype==2 & statustype==3) {# if it has been culled t cannot be infected
-        return(0)} else if (eventype==3 & statustype==1) {# it does not occur
-          return(0)}else if (eventype==3 & statustype==2){
+        return(0)} else if (eventype==4 & statustype==1) {# if it is preemptive culled
+          #update time vector
+          timevector <<- rbind(timevector,time_event) # track the time
+          # update the status vector and the indices vectors for S and for I
+          Current[,3] <<- id_
+          Status[id_] <<- 4 #culled
+          indexI[id_] <<- 4 #culled, it will not contribute to the infectious matrix anymore
+          indexS[id_] <<- 4 #culled, it is not susceptible anymore
+          return(1)}else if ((eventype==3 ) & statustype==2){
             # calculate the CFI up to that moment
             # I let the CFI grow also for the infected hosts, because they are  infected.
             # Of course they will not be considered in the calculation of the next infection time, because they are already infected
@@ -179,7 +221,7 @@ Queue <- {}
 History <- {}
 Current <- {}
 infected_over_time <- {}
-time_vector <- {} # Initialize the Cumulative Force of Infection at the  begininng of the epidemic
+time_vector <- {} # Initialize the Cumulative Force of Infection at the  beginning of the epidemic
 CFI <- matrix(0,nrow=totpoints)
 CFI_matrix <- matrix(0,ncol=totpoints,nrow=10000)
 index_new_event <- 0
