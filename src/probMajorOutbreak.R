@@ -82,7 +82,7 @@ pmajor <- function(param.list,p,n,...){
                                                             parms = c(param.list,N = list(param.list$N0*c(1-p,p))))$root)))
   dat$Rv <- Rmodel(param.list = param.list,p = p);
   names(dat)<- c("p","q1","q2","Rv");
-  dat$pmajor <- 1-dat$q1^round(n*(1-p)) * dat$q2^round(n*p);
+  dat$pmajor <- max(1-dat$q1^round(n*(1-p)) * dat$q2^round(n*p),0);
   return(dat)
 }
 
