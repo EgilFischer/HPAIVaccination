@@ -15,12 +15,12 @@ source("./src/probMajorOutbreak.R")
 #Baseline ####
 #load baseline simulations 
 rm(output.baseline.layer, output.baseline.broiler)
-output.baseline.layer <- load.sims("./output/baseline_Layer2", interval = 0.01)$output
-output.baseline.broiler <- load.sims("./output/baseline_Broiler", interval = 0.01)$output
+output.baseline.layer <- load.sims("./output/layerSize32000Vac0")$output
+#output.baseline.broiler <- load.sims("./output/baseline_Broiler")$output
 
 #load baseline parameters (assuming all parameter lists are equal within a folder)
-pars.baseline.layer <- load.sims("./output/baseline_Layer2", params = TRUE)$pars[[1]]
-pars.baseline.broiler <- load.sims("./output/baseline_Broiler", params = TRUE)$pars[[1]]
+pars.baseline.layer <- load.sims("./output/layerSize32000Vac0", params = TRUE)$pars[[1]]
+#pars.baseline.broiler <- load.sims("./output/baseline_Broiler", params = TRUE)$pars[[1]]
 
 #probability of a major outbreak ####
 q1q2.baseline.layer <- q1q2(param.list.baseline.layer)
@@ -63,12 +63,12 @@ ggsave("./output/figures/probMinorOutbreakLayerAnno.png"
 
 
 #visualize baseline ####
-plot.output.grid(rbind(cbind(output.baseline.layer,scenario = "Layer"),
-                       cbind(output.baseline.broiler,scenario = "Broiler")),
-                 c("I.1","I.2","R.1","R.2"), title = "Baseline")
-ggsave("./output/figures/baselineLayerBroiler.png")
+plot.output.grid(output = rbind(cbind(output.baseline.layer,scenario = "Layer")#,
+                       #cbind(output.baseline.broiler,scenario = "Broiler")
+                       ),
+                 vars = c("I.1","I.2","DR.1","DR.2"), title = "Baseline", frac = 0.1)
+ggsave("./output/figures/baselineLayer.png")
 
-plot.output(output.baseline.broiler,c("I.1","I.2","R.1","R.2"), "baseline_broiler")
 
 
 
@@ -88,20 +88,20 @@ surveillance.layer.baseline <- cbind(repeat.detection.time.surveillance(output.b
                                                                         pfarm = 1., 
                                                                         panimal = 1.),
                                      scenario = pars.baseline.layer$scenario)
-surveillance.broiler.baseline <- cbind(repeat.detection.time.surveillance(output.baseline.broiler,
-                                                                        reps = reps,
-                                                                        deaths.vars  = c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-                                                                        time.interval.pas = 1,
-                                                                        threshold = 0.005*pars.baseline.broiler$N0,
-                                                                        ints = 2,
-                                                                        detectables.vars = c("DI.1","DI.2","DR.1","DR.2"),
-                                                                        se = 0.99,
-                                                                        time.interval.ac =7,
-                                                                        init.ac ="rand",
-                                                                        detectables.incidence = TRUE,
-                                                                        pfarm = 1., 
-                                                                        panimal = 1.),
-                                     scenario = pars.baseline.broiler$scenario)
+# surveillance.broiler.baseline <- cbind(repeat.detection.time.surveillance(output.baseline.broiler,
+#                                                                         reps = reps,
+#                                                                         deaths.vars  = c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
+#                                                                         time.interval.pas = 1,
+#                                                                         threshold = 0.005*pars.baseline.broiler$N0,
+#                                                                         ints = 2,
+#                                                                         detectables.vars = c("DI.1","DI.2","DR.1","DR.2"),
+#                                                                         se = 0.99,
+#                                                                         time.interval.ac =7,
+#                                                                         init.ac ="rand",
+#                                                                         detectables.incidence = TRUE,
+#                                                                         pfarm = 1., 
+#                                                                         panimal = 1.),
+#                                      scenario = pars.baseline.broiler$scenario)
 
 ggplot(data = surveillance.layer.baseline)+
   geom_histogram(aes(x = pas.det.time, y=..count../sum(..count..), fill ="Passive"), colour = "black",
@@ -119,35 +119,35 @@ ggplot(data = surveillance.layer.baseline)+
   ggtitle("Active and passive surveillance Layers")
 ggsave("./output/figures/baseline_layer_surveillance.png")
 
-ggplot(data = surveillance.broiler.baseline)+
-  geom_histogram(aes(x = pas.det.time, y=..count../sum(..count..), fill ="Passive", colour = "black" ),
-                 
-                 alpha = 0.5, binwidth = 1.0)+
-  geom_histogram(aes(ac.det.time, y=..count../sum(..count..),fill = "Active", colour = "black"), 
-                 
-                 alpha = 0.5, binwidth = 1.0)+
-   geom_density(aes(min.det.time,after_stat(..density..), colour = "Minimum"),
-               linewidth = 1.0,
-               bw = 1)+
-  xlim(0,15)+ylim(0,NA)+
-  xlab("Detection time")+
-  ylab("Proportion of runs")+
-  scale_fill_manual("Detection method",values = c("Passive" = "grey","Active"= "orange"))+
-  scale_colour_manual("", values = c("Minimum" = "red"))+
-  ggtitle("Active and passive surveillance Broilers")
+# ggplot(data = surveillance.broiler.baseline)+
+#   geom_histogram(aes(x = pas.det.time, y=..count../sum(..count..), fill ="Passive", colour = "black" ),
+#                  
+#                  alpha = 0.5, binwidth = 1.0)+
+#   geom_histogram(aes(ac.det.time, y=..count../sum(..count..),fill = "Active", colour = "black"), 
+#                  
+#                  alpha = 0.5, binwidth = 1.0)+
+#    geom_density(aes(min.det.time,after_stat(..density..), colour = "Minimum"),
+#                linewidth = 1.0,
+#                bw = 1)+
+#   xlim(0,15)+ylim(0,NA)+
+#   xlab("Detection time")+
+#   ylab("Proportion of runs")+
+#   scale_fill_manual("Detection method",values = c("Passive" = "grey","Active"= "orange"))+
+#   scale_colour_manual("", values = c("Minimum" = "red"))+
+#   ggtitle("Active and passive surveillance Broilers")
+# 
+# ggsave("./output/figures/baseline_broiler_surveillance.png")
 
-ggsave("./output/figures/baseline_broiler_surveillance.png")
 
 
-
-#Layer scenarios with waning ####
-output.layer <- lapply(c(1:12),function(i){load.sims(paste0("./output/",gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)$output})
-pars.layer <- lapply(c(1:12),function(i){load.sims(paste0("./output/",gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.1)}$pars[[1]])
+#Layer scenarios with %-high titre####
+output.layer <- lapply(c(1:length(scenario.list.size.vaccination)),function(i){load.sims(paste0("./output/",gsub(scenario.list.size.vaccination[[i]]$scenario,pattern = "[.]", replacement = "")))$output})
+pars.layer <- lapply(c(1:length(scenario.list.size.vaccination)),function(i){load.sims(paste0("./output/",gsub(scenario.list.size.vaccination[[i]]$scenario,pattern = "[.]", replacement = "")))}$pars[[1]])
 
 #visualize ####
-for(i in c(1:12)){
-  show(plot.output(output.layer[[i]],c("I.1","I.2","R.1","R.2"), scenario.list[[i]]$scenario))
-  ggsave(paste0("./output/figures/", gsub(scenario.list[[i]]$scenario,pattern = "[.]", replacement = ""),".png"))
+for(i in c(1:length(scenario.list.size.vaccination))){
+  show(plot.output.sparse(output.layer[[i]],c("I.1","I.2","R.1","R.2"), scenario.list.size.vaccination[[i]]$scenario, frac= 0.1))
+  ggsave(paste0("./output/figures/", gsub(scenario.list.size.vaccination[[i]]$scenario,pattern = "[.]", replacement = ""),".png"))
   gc()  
 }
 
@@ -155,7 +155,7 @@ for(i in c(1:12)){
 #surveillance ####
 reps <- 100;
 rm(surveillance.layer)
-for(i in c(1:12)){
+for(i in c(1:length(scenario.list.size.vaccination))){
   tmp <- cbind(repeat.detection.time.surveillance(output.layer[[i]],
                                                   reps = reps,
                                                   deaths.vars  = c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
@@ -176,8 +176,9 @@ for(i in c(1:12)){
   
 }
 surveillance.layer<- cbind(surveillance.layer,surveillance.layer$scenario%>%gsub(pattern ="layer_", replacement = "")%>%str_split_fixed(pattern = c("intro"),2)%>%as.data.frame())
-
-
+surveillance.layer$vaccination <- unlist(str_split_fixed(surveillance.layer$scenario,pattern= c("Vac"),2))[,2]
+surveillance.layer$size <-gsub(unlist(str_split_fixed(surveillance.layer$scenario,pattern= c("Vac"),2))[,1], pattern = "layerSize", replacement = "")
+ 
 
 
 
@@ -196,7 +197,7 @@ ggplot(data = surveillance.layer%>%filter(scenario != "baseline_layer") )+
   xlab("Detection time")+
   ylab("Proportion of runs")+
   ggtitle("Active and passive surveillance")+
-   facet_grid(introTime~WaningRate
+   facet_grid(vaccination~size
               #,labeller =  function(variable,value){return(scenario.label[value])}
      )
 ggsave("./output/figures/scenarios_layer_surveillance.png")

@@ -16,11 +16,12 @@ load.sims <- function(path, interval = NULL, params = TRUE){
   run.counter =1;
    for(i in sims){
      if(is.null(interval)){
-     if(!exists("output"))
+     if(!exists("tmp.output"))
         {
           tmp.output <-as.data.frame(readRDS(paste0(path,"/",i))$out)
           tmp.output$run <- run.counter
-          run.counter = run.counter+1}else
+          run.counter = run.counter+1
+          }else
         {
           tmp <- as.data.frame(readRDS(paste0(path,"/",i))$out)
           tmp$run <- run.counter
@@ -29,6 +30,8 @@ load.sims <- function(path, interval = NULL, params = TRUE){
         }else #merge into intervals and reset dt
         {
           tmp <- as.data.frame(readRDS(paste0(path,"/",i))$out);
+          tmp$run <- run.counter;
+          run.counter = run.counter+1;
           tmp$interval.index <- tmp$time%/%interval;
           tmp$tround <- interval*(tmp$interval.index+sign(tmp$time))
           tmp <- tmp%>%group_by(tround)%>%slice(n())%>%ungroup
@@ -49,7 +52,8 @@ load.sims <- function(path, interval = NULL, params = TRUE){
 
 
 # ##plot the output
-plot.output <- function(output,vars,title = NULL ){
+plot.output <- function(output,vars,title = NULL, frac = NULL ){
+  if(!is.null(frac)) return(plot.output.sparse(output, vars,title,frac))
   ggplot(data =
            data.frame(output)%>%select(all_of(c("time", "run",vars)))%>%reshape2::melt(id.vars = c("time","run"),value.name = "prevalence",variable.name=c("itype")))+
         geom_step(aes(x = time, y = prevalence,colour = itype, group =run))+
@@ -57,14 +61,18 @@ plot.output <- function(output,vars,title = NULL ){
   
 }
 
+#plot a fraction of the output
 plot.output.sparse <- function(output,vars,title = NULL, frac = 0.5){
   out <- data.frame(output)%>%sample_n(round(frac*length(output$time)));
   return(plot.output(out, vars, title))
 }
 
-plot.output.grid <- function(output,vars,title = NULL ){
+plot.output.grid <- function(output,vars,title = NULL, frac = NULL ){
+    if(is.null(frac)){out = output}else{
+      out <- data.frame(output)%>%sample_n(round(frac*length(output$time)))
+    }
     ggplot(data =
-           data.frame(output)%>%select(all_of(c(vars,"time", "run","scenario")))%>%reshape2::melt(id.vars = c("time","run","scenario"),value.name = "prevalence",variable.name=c("itype")))+
+           data.frame(out)%>%select(all_of(c(vars,"time", "run","scenario")))%>%reshape2::melt(id.vars = c("time","run","scenario"),value.name = "prevalence",variable.name=c("itype")))+
     geom_step(aes(x = time, y = prevalence,colour = itype, group =run))+
     ylab("#number of birds")+facet_grid(scenario~itype)+ggtitle(title)
   
@@ -72,25 +80,6 @@ plot.output.grid <- function(output,vars,title = NULL ){
 
 # 
 # #human exposure ####
-# #Assumption of exposure is that the rate at which humans get exposed to infection is proportionate to the infectivity towards chickens
-# a <-0.001; #factor scaling towards human exposure
-# beta.human <- a*beta
-# 
-# 
-# output.df<- data.frame(output)
-# exposure.human <- output.df%>%group_by(run)%>%reframe(time = time,
-#                                                       I.1 = I.1,
-#                                                       I.2= I.2,
-#                                                       psurvdt = exp(-beta.human[1,1]*I.1*dt-beta.human[1,2]* I.2*dt))
-# exposure.human <- exposure.human%>%group_by(run)%>%mutate(
-#   pinf = 1 - cumprod(psurvdt))
-# ggplot(data = exposure.human) + 
-#   geom_path(aes(x = time, y = psurvdt, colour = factor(run)))
-# ggplot(data = exposure.human) + 
-#   geom_path(aes(x = time, y = pinf, colour = factor(run)))
-
-
-
 human.exposure.timeseries.multiple.runs <- function(output, beta.human)
   {
   exposure<- data.frame(output)%>% group_by(run)%>%reframe(time = time,

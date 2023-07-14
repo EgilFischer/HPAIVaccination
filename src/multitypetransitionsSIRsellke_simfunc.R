@@ -11,26 +11,22 @@
 #load libraries
 source("./src/loadLibraries.R") 
 
-
-#define number of types
-itypes = 2;
-
 #create a list of all parameters
-param.list <- list(
-  scenario = "TestSIR", #scenario
-  runs =2, #number of runs
-  max.time = 17*30,#length of the run
-  itypes = itypes, #types####
-  N0 = 450, #population size####
-  initial= 10 , #initially infected
-  p.hightitre = 1 - 6/26,#proportion initially protected by vaccination
-  beta = matrix(c(1.13, 1.13,0.05,0.05),ncol = itypes),#,#transmission coefficient matrix for a 2x2 matrix (1 -> 1, 1->2, 2-> 1, 2-> 2)#Use values for infectivity and infectious periods from Sitaris et al 2016 https://doi.org/10.1098/rsif.2015.0976#Type 1  = not protected by vaccination and type 2 = protected by vaccination
-  infectious.period = c(3.0,4.0),#Duration infectious period 
-  variance.infectious.period = c(3.0,4.0)^2, #Variance infectious period
-  transRate = matrix(c(0,0.012,0.0,0), nrow = itypes), #value based on https://nvaidya.sdsu.edu/SIAP2015.pdf #transition rates should be of size itypes x itypes with 0 on diagonal
-  pdie = c(0.01,0.01),#probability of dying at end of infectious period
-  mortRate = 0.0005/7 #per capita death rate #Mortality events - based on performance reports and pers. com. mieke matthijs 0.5% per week
-)
+# param.list <- list(
+#   scenario = "TestSIR", #scenario
+#   runs =2, #number of runs
+#   max.time = 17*30,#length of the run
+#   itypes = itypes, #types####
+#   N0 = 450, #population size####
+#   initial= 10 , #initially infected
+#   p.hightitre = 1 - 6/26,#proportion initially protected by vaccination
+#   beta = matrix(c(1.13, 1.13,0.05,0.05),ncol = 2),#,#transmission coefficient matrix for a 2x2 matrix (1 -> 1, 1->2, 2-> 1, 2-> 2)#Use values for infectivity and infectious periods from Sitaris et al 2016 https://doi.org/10.1098/rsif.2015.0976#Type 1  = not protected by vaccination and type 2 = protected by vaccination
+#   infectious.period = c(3.0,4.0),#Duration infectious period 
+#   variance.infectious.period = c(3.0,4.0)^2, #Variance infectious period
+#   transRate = matrix(c(0,0.012,0.0,0), nrow = 2), #value based on https://nvaidya.sdsu.edu/SIAP2015.pdf #transition rates should be of size itypes x itypes with 0 on diagonal
+#   pdie = c(0.01,0.01),#probability of dying at end of infectious period
+#   mortRate = 0.0005/7 #per capita death rate #Mortality events - based on performance reports and pers. com. mieke matthijs 0.5% per week
+# )
 
 inits <- with(param.list,{list(
   I0 = round(c(1-p.hightitre,p.hightitre)*initial,digits = 0), #number of initially infectious
@@ -46,9 +42,9 @@ functions <- with(param.list, {list(
 
 
 
-#function to run the model ####
-sim.multitypeSIR <- function(param.list,init, functions, seed = NULL)
-{
+
+#Simulation of multitype SIR with transitions in both directions   (fromcurrentState = FALSE)
+sim.multitypeSIR<- function(param.list,init, functions, seed = NULL, fromcurrentState = TRUE){
   with(c(param.list,init,functions),{
   set.seed(seed); 
   #initialize
@@ -116,20 +112,25 @@ sim.multitypeSIR <- function(param.list,init, functions, seed = NULL)
     #schedule mortality events for all animals 
     events <- rbind(events,data.frame(type = c("M"), time = sapply(FUN = dLE, X = runif(state$N)),id = indiv.states$id))
     
-    #schedule transition events for all animals
+    if(fromcurrentState){
+    #schedule one transition events from initial state to the other for all animals
     for(i in c(1:itypes)){#type from which to transition
       for(j in c(1:itypes)) #type transition to
-      {
-        if(i!=j){
-          if(length(indiv.states[indiv.states$state=="S" & indiv.states$itype == i,]$id)>0)
-          {
-          events <- rbind(events,data.frame(type = c(paste0("T",i,j)), time = sapply(FUN = dT, X = runif(state$S[i]), 
+        {
+          if(i!=j){
+            if(length(indiv.states[indiv.states$state=="S" & indiv.states$itype == i,]$id)>0)
+            {
+            events <- rbind(events,data.frame(type = c(paste0("T",i,j)), time = sapply(FUN = dT, X = runif(state$S[i]), 
                                                                                      itype1 = i, itype2 = j),
                                             id = indiv.states[indiv.states$state=="S" & indiv.states$itype == i,]$id))
+            }
           }
         }
       }
-    }
+    } else {
+      #for each individual schedule first event from current state than from next state etc. 
+        stop("Not yet implemented!")
+      }
     
     #remove events that will never happen
     events <- filter(events,time != Inf)
