@@ -9,3 +9,4 @@
 *.tif
 /input *
 /output *
+.RDataTmp3
