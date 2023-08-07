@@ -88,7 +88,10 @@ pmajor <- function(param.list,p,n,...){
 
 
 #test the exponential and gamma are equal if the variance is the square of the mean (e.g. shape has value 1) ####
-param.list <- param.list.baseline.layer
+param.list <- list(beta = matrix(c(1.13,1.13,0.05,0.05),nrow =2),  
+                   infectious.period = c(3,4), 
+                   mortRate = c(7.14E-05),
+                   N0 = 64000)
 param.list$gamma <- 1/param.list$infectious.period
 param.list$mu <- param.list$mortRate
 #exponential distributed infectious period
