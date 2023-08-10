@@ -7,7 +7,8 @@
 #                  Contact:                              
 #                  Creation date                         
 ###########################################################################
-
+#libraries
+source("./src/loadLibraries.R")
 
 #load spatial input
 spatial.input<- read_excel("./input/20230404_AI_AnimalLocations_SizeType_v02.xlsx", sheet = 2)

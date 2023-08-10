@@ -12,3 +12,8 @@ package.check <- lapply(
     }
   }
 )
+
+# User-defined generic functions ####
+rm.exist <- function(x){
+  if(exists(deparse(substitute(x))))rm(x); 
+}

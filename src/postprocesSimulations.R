@@ -9,7 +9,7 @@
 
 source("./src/loadLibraries.R") 
 
-#load simulations
+#load simulations ####
 load.sims <- function(path, interval = NULL, params = TRUE){
   sims <- list.files(path, pattern = ".RDS");if(length(sims) == 0) stop("No simulations in this folder");
   #recode runs
@@ -50,8 +50,8 @@ load.sims <- function(path, interval = NULL, params = TRUE){
   return(list(output = tmp.output,pars = if(params){param_lists}else{NULL}))
 }
 
-
-# ##plot the output
+#Visualization of output ####
+#plot the output
 plot.output <- function(output,vars,title = NULL, frac = NULL ){
   if(!is.null(frac)) return(plot.output.sparse(output, vars,title,frac))
   ggplot(data =
@@ -67,19 +67,30 @@ plot.output.sparse <- function(output,vars,title = NULL, frac = 0.5){
   return(plot.output(out, vars, title))
 }
 
-plot.output.grid <- function(output,vars,title = NULL, frac = NULL ){
+#plot a grid with outputs 
+plot.output.grid <- function(output,vars,title = NULL, frac = NULL , scales = "fixed", scenario.label = NULL){
     if(is.null(frac)){out = output}else{
       out <- data.frame(output)%>%sample_n(round(frac*length(output$time)))
     }
     ggplot(data =
            data.frame(out)%>%select(all_of(c(vars,"time", "run","scenario")))%>%reshape2::melt(id.vars = c("time","run","scenario"),value.name = "prevalence",variable.name=c("itype")))+
     geom_step(aes(x = time, y = prevalence,colour = itype, group =run))+
-    ylab("#number of birds")+facet_grid(scenario~itype)+ggtitle(title)
+    ylab("#number of birds")+facet_grid(scenario~itype, scales = scales, labeller = labeller(scenario = scenario.label))+ggtitle(title)
   
 }
 
-# 
-# #human exposure ####
+ 
+#Calculate human exposure ####
+#one time series
+human.exposure.timeseries <- function(output, beta.human){
+  exposure<- data.frame(output)%>% reframe(time = time,
+                                           I.1 = I.1,
+                                           I.2= I.2,
+                                           cum.exposure = cumsum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt))
+  
+}
+
+#multiple time series
 human.exposure.timeseries.multiple.runs <- function(output, beta.human)
   {
   exposure<- data.frame(output)%>% group_by(run)%>%reframe(time = time,
@@ -90,24 +101,20 @@ human.exposure.timeseries.multiple.runs <- function(output, beta.human)
 }
 
 
-human.exposure.timeseries <- function(output, beta.human){
-  exposure<- data.frame(output)%>% reframe(time = time,
-                                               I.1 = I.1,
-                                               I.2= I.2,
-                                               cum.exposure = cumsum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt))
-  
-}
-
-human.exposure.total.multiple.runs<- function(output, beta.human,detection.time,var.det = "min.det.time")
+#multiple time series and detection times
+human.exposure.detection.multiple.runs<- function(output, beta.human,detection.time,var.det = c("pas.det.time", "ac.det.time", "min.det.time"))
 {
+  exposure <- NULL;
+  for(det.method in var.det)
+  {
   if(is.null(detection.time$rep))detection.time$rep <- 1;
-  exposure<- data.frame(output)%>% group_by(run)%>%reframe(total.exposure = sum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt))
+  tot.exposure<- data.frame(output)%>% group_by(run)%>%reframe(total.exposure = sum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt))
   exp.det<-c();
-  for(i in exposure$run){
+  for(i in tot.exposure$run){
     reps <- detection.time%>%filter(run == i)%>%select("rep")%>%max
     for(j in c(1:reps))
     {
-      dettime <-  detection.time[detection.time$run == i & detection.time$rep == j, var.det];
+      dettime <-  detection.time[detection.time$run == i & detection.time$rep == j, det.method];
       exp.det<-rbind(exp.det, data.frame(output)%>%filter(run == i & time<=dettime)%>%reframe(run = i,
                                 rep = j,
                                 detection.time = dettime,
@@ -116,7 +123,10 @@ human.exposure.total.multiple.runs<- function(output, beta.human,detection.time,
         cum.I.2 = sum(I.2*dt)))
     }
   }
-  exposure<- cbind( data.frame(exp.det),data.frame(total.exposure = rep(exposure$total.exposure, each = reps)))
+  exposure<- rbind(exposure,cbind(data.frame(exp.det),
+                                  data.frame(total.exposure = rep(c(tot.exposure$total.exposure), each = reps)), 
+                                  data.frame(detection.method = c(det.method))))
+  }
   return(exposure)
 }
 

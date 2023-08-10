@@ -30,7 +30,7 @@ repeat.detection.time.surveillance <- function(output, #output consisting of one
                                                panimal, #probability per detectables animal to being monitored,
                                                seed = NULL, #seed
                                                roundTime = 1,# times will be rounded to multiple of roundTime. If roundTime == Null no rounding
-                                               ...
+                                                ...
                                                
     )
 {
@@ -41,8 +41,8 @@ repeat.detection.time.surveillance <- function(output, #output consisting of one
     for(j in c(1:reps))
     {
       
-      #arrange data of this run for detection
-      det.data <- arrange.data.detection(output%>%filter(run==i), 
+    #arrange data of this run for detection
+    det.data <- arrange.data.detection(output%>%filter(run==i), 
                                          #passive detection
                                          deaths.vars,
                                          #active detection
@@ -52,6 +52,7 @@ repeat.detection.time.surveillance <- function(output, #output consisting of one
                                          detectables.incidence,
                                          #overall
                                          roundTime)
+    
     #determine passive detection time
     pas.det.time <- passive.detection.time.threshold.subsequent(det.data$times.passive,
                                                                 det.data$deaths,
@@ -79,7 +80,6 @@ repeat.detection.time.surveillance <- function(output, #output consisting of one
                                                                                            ac.succes = pas.det.time>ac.det.time))                          
                                                                    }
     }
-    
   }
   return(surveillance.time)
 }
@@ -97,9 +97,8 @@ passive.detection.time.threshold.interval <- function(times,Deaths, time.interva
   #return the first time the threshold is passed /  return Inf if never
   if(max(Dinterval$deaths)<threshold){return(Inf)}
   return(min(Dinterval$time[Dinterval$deaths>=threshold], max(Dinterval$time)));
-  
-  
 }
+
 #Passive detection: detect if a certain number of R dead are found within subsequent time intervals
 passive.detection.time.threshold.subsequent <- function(times,Deaths, time.interval.pas, threshold,ints ){
   #determine the number of deaths at the end of the interval
