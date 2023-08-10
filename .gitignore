@@ -9,4 +9,6 @@
 *.tif
 /input *
 /output *
-.RDataTmp3
+.RDataTmp*
+.RDataTmp*
+.RDataTmp*
