@@ -8,40 +8,6 @@
 #########################################################
 
 
-# Set input point pattern
-matrix_points <- spatial.input[,c("X","Y")] # I select one point pattern as example
-totpoints <- nrow(matrix_points) # total number of points
-colnames(matrix_points) <- c("xcoord","ycoord")
-# Add a column for the index
-Index_points <- c(1:totpoints)
-# Calculate the matrix of distances between points
-# Express the coordinates as complex numbers for fast calculation of the euclidean distance
-Coord <-
-  (complex(length.out=2,real=matrix_points$xcoord,imaginary=matrix_points$ycoord));
-distancematrix <- as.matrix(abs(outer(Coord,Coord,"-")))
-
-#define a matrix for preemptive culling
-culling.radius <- 3
-culling.delay <- 1
-cullingmatrix <- 1*(distancematrix<= culling.radius) #(times one keeps the matrix as it is and transforms boolean to numeric)
-diag(cullingmatrix) <- matrix(0,nrow=totpoints); #no culling because of detection by itself
-  
-# Define the transmission kernel and calculate the hazard matrix
-# Rescale the parameters h0 used in Boender et al. to account for the change in size and number of farms (see main text)
-h0 <- 0.002*5360/totpoints;
-alpha <- 2.1;
-r0 <- 1.9;
-h_kernel <- function(r){h0/(1 + (r/r0)^alpha)} ; # transmission kernel as a function of r
-beta<-1;
-
-# Create an hazard matrix evaluating for each host j the chance to be infected by host i as a function of distance
-hazardmatrix <- as.matrix(apply(distancematrix,MARGIN=c(1,2),FUN=h_kernel));
-#discount hazard by vaccination
-diag(hazardmatrix) <- matrix(0,nrow=totpoints); # because the chance of infecting itself is 0
-
-
-
-
 
 
 # code of InitSim.R sourced in the main code
@@ -104,5 +70,5 @@ if(all.equal(cbind(List_to_infect[1,1],List_to_infect[1,2],List_to_infect[1,3]),
 index_new_event <- index_new_event+1
 CFI_matrix[index_new_event,] <- CFI
 timevector <- rbind(time_vector,tt)
-infected_over_time <- rbind(infected_over_time,c(0,length(indexI[indexI==1])))
+infected_over_time <<- rbind(infected_over_time,c(tt,length(indexI[indexI==1]), length(indexI[indexI==3]),length(indexI[indexS==4])))
 

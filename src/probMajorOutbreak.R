@@ -68,7 +68,7 @@ Rmodel.gamma <- function(param.list, p, mortality = TRUE){with(param.list,
 
 q1q2 <- function(param.list,...){
   dat<- data.frame(t(sapply(FUN = function(p){c(p,multiroot(f = model, start = c(.01,.01),
-                                                      rtol = 1E-17,
+                                                      rtol = 1E-19,
                                                       parms = c(param.list,N = list(param.list$N0*c(1-p,p))),...)$root)}, X = seq(0,1,.01))))
   dat$Rv <- sapply(FUN = Rmodel, param.list = param.list,X = seq(0,1,.01),... )
   names(dat)<- c("p","q1","q2","Rv");
@@ -77,8 +77,8 @@ q1q2 <- function(param.list,...){
 
 pmajor <- function(param.list,p,n,...){
   dat<- data.frame(p = p)
-  dat <- cbind(dat,data.frame(t( multiroot(f = model, start = c(.01,.01),
-                                                            rtol = 1E-17,
+  dat <- cbind(dat,data.frame(t( multiroot(f = model, start = c(.1,.1),
+                                                            rtol = 1E-19,
                                                             parms = c(param.list,N = list(param.list$N0*c(1-p,p))))$root)))
   dat$Rv <- Rmodel(param.list = param.list,p = p);
   names(dat)<- c("p","q1","q2","Rv");

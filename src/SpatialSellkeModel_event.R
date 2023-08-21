@@ -5,6 +5,9 @@
 # statustype: 1= susceptible; 2= infectious; 3= culled;
 
 event <- function(time_event,eventype,statustype,id_){
+  if(time_event < 0){
+   stop("o")
+  }
   if (eventype==2 & statustype==1){
     # calculate the CFI up to that moment
     # I let the CFI grow also for the infected hosts, because they are infected.
@@ -21,7 +24,7 @@ event <- function(time_event,eventype,statustype,id_){
     indexS[id_] <<- 1 # not susceptible anymore
     # save the number of infected over time in a list
     infected_over_time <<-
-      rbind(infected_over_time,c(time_event,length(indexI[indexI==1])))
+      rbind(infected_over_time,c(time_event,length(indexI[indexI==1]), length(indexI[indexI==3]),length(indexI[indexS==4])))
     # calculate the slope of the force of infection from this moment onwards
     bb[which(indexS==0)] <<-
       beta*apply(matrix(hazardmatrix[which(indexI==1),which(indexS==0)],nrow=length(which(indexI==1)),ncol=length(which(indexS==0))), MARGIN=2,FUN=sum)
@@ -55,9 +58,9 @@ event <- function(time_event,eventype,statustype,id_){
         ))
     }
     #add additional preemptive culling
-    preemptivecul <- which(c(1:totpoints)*cullingmatrix[id_,]!=0)
+    preemptivecul <- which(c(1:totpoints)*cullingmatrix[id_,]!=0)#get all farms within the culling radius
     for(iter in preemptivecul){
-      #only cull non culled farms
+      #only cull non-culled farms
       if(Status[iter]<=2)
       {
       #check preemptive culling of this farm
@@ -73,7 +76,7 @@ event <- function(time_event,eventype,statustype,id_){
         List_to_remove <<-
           rbind(List_to_remove,data.frame(Event_time=tt+T_inf[id_]+culling.delay,Type_event=4,id_host=iter
           ))
-      }
+        }
       }
     }
     #order removal list
@@ -86,9 +89,9 @@ event <- function(time_event,eventype,statustype,id_){
           timevector <<- rbind(timevector,time_event) # track the time
           # update the status vector and the indices vectors for S and for I
           Current[,3] <<- id_
-          Status[id_] <<- 4 #culled
-          indexI[id_] <<- 4 #culled, it will not contribute to the infectious matrix anymore
-          indexS[id_] <<- 4 #culled, it is not susceptible anymore
+          Status[id_] <<- 4 #preemptive culled
+          indexI[id_] <<- 4 #preemptive culled, it will not contribute to the infectious matrix anymore
+          indexS[id_] <<- 4 #preemptive culled, it is not susceptible anymore
           return(1)}else if ((eventype==3 | eventype == 4 ) & statustype==2){
             # calculate the CFI up to that moment
             # I let the CFI grow also for the infected hosts, because they are  infected.
@@ -101,12 +104,12 @@ event <- function(time_event,eventype,statustype,id_){
             timevector <<- rbind(timevector,time_event) # track the time
             # update the status vector and the indices vectors for S and for I
             Current[,3] <<- id_
-            Status[id_] <<- 3 #culled
-            indexI[id_] <<- 3 #culled, it will not contribute to the infectious matrix anymore
-            indexS[id_] <<- 3 #culled, it is not susceptible anymore
-            # save the number of infected over time in a list
+            Status[id_] <<- eventype #culled but either by detection (3) or neighbourhood culling (4)
+            indexI[id_] <<- eventype #culled, it will not contribute to the infectious matrix anymore
+            indexS[id_] <<- eventype #culled, it is not susceptible anymore
+            # save the number of infected, culled and preemptive culled over time in a list
             infected_over_time <<-
-              rbind(infected_over_time,c(time_event,length(indexI[indexI==1])))
+              rbind(infected_over_time,c(time_event,length(indexI[indexI==1]), length(indexI[indexI==3]),length(indexI[indexS==4])))
             if(length(which(indexI==1))!=0){ # if there are still individual    infected
               # update the slope of the force of infection
               bb[which(indexS==0)] <<-

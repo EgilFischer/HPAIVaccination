@@ -75,7 +75,9 @@ plot.output.grid <- function(output,vars,title = NULL, frac = NULL , scales = "f
     ggplot(data =
            data.frame(out)%>%select(all_of(c(vars,"time", "run","scenario")))%>%reshape2::melt(id.vars = c("time","run","scenario"),value.name = "prevalence",variable.name=c("itype")))+
     geom_step(aes(x = time, y = prevalence,colour = itype, group =run))+
-    ylab("#number of birds")+facet_grid(scenario~itype, scales = scales, labeller = labeller(scenario = scenario.label))+ggtitle(title)
+    ylab("#number of birds")+facet_grid(scenario~itype, 
+                                        scales = scales, 
+                                        labeller = labeller(scenario = scenario.label))+ggtitle(title)
   
 }
 

@@ -40,7 +40,7 @@ for(i in c(1:3)){
   param.list$N0 <-  c(15000,32000,64000)[i]
   param.list$p.hightitre <- c(0.0, 0.5,0.6,0.7,0.8,0.9)[j]
   param.list$scenario <- paste0("layerSize",param.list$N0,"Vac",param.list$p.hightitre*100);
-  scenario.list.size.vaccination[[6*(i-1)+j]]<- param.list
+  scenario.list.size.vaccination[[7*(i-1)+j]]<- param.list
   }
 }
 
@@ -116,10 +116,11 @@ for(i in c(1:length(scenario.list.waning))){
 
 
 
+
 #Broilers ####
 #Baseline parameters for broiler flock ####
 param.list.baseline.broiler <- list(
-  scenario = "baseline_Layer", #scenario
+  scenario = "baseline_Broiler", #scenario
   runs = 10, #number of runs
   max.time = 46,#length of the run
   itypes = 2, #type
@@ -133,6 +134,25 @@ param.list.baseline.broiler <- list(
   pdie = c(0.99,0.01),#probability of dying at end of infectious period
   mortRate = 0.0005/7 #per capita death rate #Mortality events - based on performance reports and pers. com. mieke matthijs 0.5% per week +Gonzales & elbers figure 1 
 )
+
+#Size scenarios
+scenario.list.size.vaccination <- list()
+for(i in c(1:3)){
+  for(j in c(1:6)){
+    param.list <- param.list.baseline.broiler;
+    param.list$runs <- 10;
+    param.list$N0 <-  c(20000, 38000, 73000)[i]
+    param.list$p.hightitre <- c(0.0, 0.5,0.6,0.7,0.8,0.9)[j]
+    param.list$scenario <- paste0("broilerSize",param.list$N0,"Vac",param.list$p.hightitre*100);
+    scenario.list.size.vaccination[[6*(i-1)+j]]<- param.list
+  }
+}
+
+for(i in  c(1:length(scenario.list.size.vaccination))){
+  print(scenario.list.size.vaccination[[i]]$scenario);
+  print(Sys.time())
+  simulate.multitypeSIR(scenario.list.size.vaccination[[i]])
+}
 
 
 # Clinical protection ####
