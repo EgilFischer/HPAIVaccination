@@ -36,16 +36,19 @@ diag(hazardmatrix) <- matrix(0,nrow=totpoints); # because the chance of infectin
 numsim <-max.runs
 totpoints <- nrow(spatial.input)
 Q_init_matrix <- matrix(0,nrow=numsim,ncol=totpoints)
+F_matrix <- matrix(0,nrow=numsim,ncol=totpoints) #determine fade-out or culling
 T_inf_matrix <- matrix(0,nrow=numsim,ncol=totpoints)
 V_stat_matrix <- matrix(0,nrow=numsim,ncol=totpoints)
 P_maj_matrix <- matrix(0,nrow=numsim,ncol=totpoints)
 
-for (ii in 1:numsim){
+for (ii in c(1:numsim)){
   Q_init_matrix[ii,] <- rexp(totpoints, rate = 1)
   #vaccination status
   V_stat_matrix[ii,]<- sapply(spatial.input$TYPE,vac.func)
-  #infectious period is determined by the vaccination status
-  T_inf_matrix[ii,] <- mapply(Tdist, vacstat = V_stat_matrix[ii,], type = spatial.input$TYPE)
+  #fade out or culling
+  F_matrix[ii,] <- sapply(V_stat_matrix[ii,], fadeout_func)
+  #infectious period is determined by the vaccination status and fade-out or culling
+  T_inf_matrix[ii,] <- mapply(Tdist, vacstat = V_stat_matrix[ii,], type = spatial.input$TYPE, fadeout = F_matrix[ii,])
   #probability of major outbreak
   P_maj_matrix[ii,] <- sapply( V_stat_matrix[ii,], function(p){pmajor(param.list.baseline.layer, p,10)$pmajor})
 }

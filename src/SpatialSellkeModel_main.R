@@ -16,6 +16,7 @@ for(repetition in c(1:max.runs))
  {
   print(paste("Repetition ", repetition,"of",max.runs));
   K<- index.farm[repetition]  # define the first infected
+  F_vector <- F_matrix[repetition,]#fade out = 1
   T_inf <- T_inf_matrix[repetition,] # rgamma(totpoints,10, scale=7/10) # mean=7, std=2
   Q_init <- Q_init_matrix[repetition,] # rexp(totpoints, rate = 1) # these are the thresholds (exposure to infection) picked from an exponential distribution of mean 1
   hazardmatrix <- t(t(hazardmatrix)*P_maj_matrix[repetition,])

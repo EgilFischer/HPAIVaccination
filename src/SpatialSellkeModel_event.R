@@ -1,14 +1,11 @@
 # Model the transmission event between hosts
 # Define the function handling the events in the spatial transmission model
 # Event function has four entries: event_time= time at which an event occurs, eventtype= type of event, statustype=status of host,id_= ID of host
-# eventtype: 2=infection; 3=removal;
-# statustype: 1= susceptible; 2= infectious; 3= culled;
+# eventtype: 2=infection; 3,4 and 5 =removal by culling, pre-emptive culling or fade out;
+# statustype: 1= susceptible; 2= infectious; 3= culled;4 = pre-emptive culled; 5 = fade-out;
 
 event <- function(time_event,eventype,statustype,id_){
-  if(time_event < 0){
-   stop("o")
-  }
-  if (eventype==2 & statustype==1){
+   if (eventype==2 & statustype==1){
     # calculate the CFI up to that moment
     # I let the CFI grow also for the infected hosts, because they are infected.
     #Of course, the already infected hosts will not be considered in the calculation of the next infection time, because they are already infected
@@ -24,7 +21,11 @@ event <- function(time_event,eventype,statustype,id_){
     indexS[id_] <<- 1 # not susceptible anymore
     # save the number of infected over time in a list
     infected_over_time <<-
-      rbind(infected_over_time,c(time_event,length(indexI[indexI==1]), length(indexI[indexI==3]),length(indexI[indexS==4])))
+      rbind(infected_over_time,
+            c(time_event,length(indexI[indexI==1]), 
+              length(indexI[indexI==3]),
+              length(indexI[indexS==4]), 
+              length(indexI[indexI ==5])))
     # calculate the slope of the force of infection from this moment onwards
     bb[which(indexS==0)] <<-
       beta*apply(matrix(hazardmatrix[which(indexI==1),which(indexS==0)],nrow=length(which(indexI==1)),ncol=length(which(indexS==0))), MARGIN=2,FUN=sum)
@@ -43,6 +44,8 @@ event <- function(time_event,eventype,statustype,id_){
                                                          tt+next_infection_time, Type_event = rep(2,length(next_infection_host)),
                                                        id_host = next_infection_host))
     List_to_infect <<- List_to_infect[order(List_to_infect[,1]),]
+    #determine to schedule fade out or culling event
+    fadeout_culling <- 2*F_vector[id_] + 3;
     #update the list of hosts to remove
     #check preemptive culling of this farm
     if(!is.null(List_to_remove[List_to_remove$id_host==id_,])&length(List_to_remove[List_to_remove$id_host==id_,]$Event_time)>0)  {
@@ -50,11 +53,12 @@ event <- function(time_event,eventype,statustype,id_){
       if(tt+T_inf[id_]< List_to_remove[List_to_remove$id_host==id_,]$Event_time){
         #remove replace time 
         List_to_remove[List_to_remove$id_host==id_,]$Event_time <<- tt+T_inf[id_];
+        List_to_remove[List_to_remove$id_host==id_,]$Type_event <<-  fadeout_culling;
       }
     }else{
-      #add this farm
+      #add this farm either as 
       List_to_remove <<-
-        rbind(List_to_remove,data.frame(Event_time=tt+T_inf[id_],Type_event=3,id_host=id_
+        rbind(List_to_remove,data.frame(Event_time=tt+T_inf[id_],Type_event= fadeout_culling,id_host=id_
         ))
     }
     #add additional preemptive culling
@@ -83,8 +87,8 @@ event <- function(time_event,eventype,statustype,id_){
     List_to_remove <<- List_to_remove[order(List_to_remove[,1]),]
     return(1)} else if (eventype==2 & statustype==2) {# already infected
       return(0)} else if (eventype==2 & statustype==3) {# if it has been culled t cannot be infected
-        return(0)} else if (statustype == 4){#if already culled
-          return(0)} else if (eventype==4 & statustype==1) {# if it is preemptive culled
+        return(0)} else if (statustype == 4 || statustype ==5){#if already culled or infection faded out
+          return(0)} else if (eventype==4 & statustype==1) {#  preemptive culling
           #update time vector
           timevector <<- rbind(timevector,time_event) # track the time
           # update the status vector and the indices vectors for S and for I
@@ -92,7 +96,7 @@ event <- function(time_event,eventype,statustype,id_){
           Status[id_] <<- 4 #preemptive culled
           indexI[id_] <<- 4 #preemptive culled, it will not contribute to the infectious matrix anymore
           indexS[id_] <<- 4 #preemptive culled, it is not susceptible anymore
-          return(1)}else if ((eventype==3 | eventype == 4 ) & statustype==2){
+          return(1)}else if (eventype>=3  & statustype==2){#culling or fade out
             # calculate the CFI up to that moment
             # I let the CFI grow also for the infected hosts, because they are  infected.
             # Of course they will not be considered in the calculation of the next infection time, because they are already infected
@@ -109,7 +113,11 @@ event <- function(time_event,eventype,statustype,id_){
             indexS[id_] <<- eventype #culled, it is not susceptible anymore
             # save the number of infected, culled and preemptive culled over time in a list
             infected_over_time <<-
-              rbind(infected_over_time,c(time_event,length(indexI[indexI==1]), length(indexI[indexI==3]),length(indexI[indexS==4])))
+              rbind(infected_over_time,
+                    c(time_event,length(indexI[indexI==1]), 
+                      length(indexI[indexI==3]),
+                      length(indexI[indexS==4]), 
+                      length(indexI[indexI ==5])))
             if(length(which(indexI==1))!=0){ # if there are still individual    infected
               # update the slope of the force of infection
               bb[which(indexS==0)] <<-

@@ -58,12 +58,16 @@ shape.function <- function(vac){with(shape.fit,
                                      coefficients[1]+coefficients[2]*vac*100 + coefficients[3]*(vac*100)^2 +coefficients[4]*(vac*100)^3 )}
 
 #function to set the infectious period distribution depending on the vaccination status
-Tdist = function(vacstat,type){
+Tdist = function(vacstat,type,fadeout){
   shape = shape.function(vacstat);
   rate = rate.function(vacstat);
   return(rgamma(1, shape= shape, rate = rate))
 }
 
+#fade out function always return 0 except for clinical protection scenarios.
+fadeout_func = function(vacstat){
+  return(0);
+}
 
 
 #introduction locations 
@@ -95,7 +99,11 @@ saveRDS(histories, file = "./output/histories_novaccination_hdpa.RDS")
 saveRDS(V_stat_matrix,file = "./output/V_stat_matrix_hdpa.RDS")
 Sys.time()-srm
 
-#summarize
+
+infected_over_time_runs<- readRDS( file = "./output/infected_over_time_runs_novaccination_hdpa.RDS")
+histories <- readRDS(file = "./output/histories_novaccination_hdpa.RDS")
+
+#visualize  & summarize
 ggplot(infected_over_time_runs%>%reframe(.by = run,
                                   C = max(C),
                                   PC = max(PC)))+geom_histogram(aes(C,after_stat(count/sum(count))))+labs(x="Infected culled",y= "Proportion of runs")
@@ -103,9 +111,19 @@ ggplot(infected_over_time_runs%>%reframe(.by = run,
                                          C = max(C),
                                          PC = max(PC)))+geom_histogram(aes(PC))
 
-#visualize
-ggplot(infected_over_time_runs%>%filter(Time>0))+geom_path(aes(Time,I,colour = as.factor(run)))+theme(legend.position = "none")
+ggplot(infected_over_time_runs)+
+  geom_path(aes(Time,I,colour = as.factor(run)))+
+  theme(legend.position = "none")
 
+ggplot(infected_over_time_runs%>%reframe(.by = run,
+                                  Detected = max(C),
+                                  Preemptive = max(PC))%>%reshape2::melt(id.vars="run"),aes(value))+
+  geom_histogram(aes(y =after_stat(count/sum(count)),fill = variable),position = "identity",binwidth = 1)+
+  scale_fill_manual(values =c("Detected" = "red", "Preemptive" = "gray"), 
+                    labels =c("Detected" = "Detected", "Preemptive" = "Pre-emptive"),
+                    name = "Culling")+
+  labs(x = "Number of farms",y = "Proportion of runs")+facet_grid(variable~.)
+ggsave("./output/figures/spatialHPDAculledfarms.png")
 #length of infectious periods
 joined.histories <- NULL;joined.vacstatus<- NULL;
 for(it in c(1:length(histories))){
@@ -122,8 +140,8 @@ infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
 inf.vac.novaccin<- left_join(infectious.periods,joined.vacstatus,by = c("host_id","run"))
 
 
-exposure.novaccin.fit <- readRDS(fit, file = "./output/exposurefitLayer.RDS")
-exposure.vaccin.fit <- readRDS(fit, file = "./output/exposurefitLayerVaccin.RDS")
+exposure.novaccin.fit <- readRDS(file = "./output/exposurefitLayer.RDS")
+exposure.vaccin.fit <- readRDS(file = "./output/exposurefitLayerVaccin.RDS")
 predict(exposure.novaccin.fit, newdata =data.frame(size = c(15000), vaccination = c(0.6)))
 predict(exposure.vaccin.fit, newdata =data.frame(size = c(15000), vaccination = c(0.6)))
 
@@ -137,7 +155,7 @@ exposure.novaccin.tot <- inf.vac.novaccin%>%reframe(.by = run,
 srm <- Sys.time()
 index.farm <- hpda
 max.runs <- length(index.farm)
-vac.func <- function(vac, type){ifelse(type == "LAYER",0.6,0)}
+vac.func <- function(type){ifelse(type == "LAYER",0.6,0)}
 source("./src/SpatialSellkeModel_init_simuls.R")
 #run the model
 source("./src/SpatialSellkeModel_main.R")
@@ -146,6 +164,9 @@ saveRDS(infected_over_time_runs, file = "./output/infected_over_time_runs_60vacc
 saveRDS(histories, file = "./output/histories_60vaccination_hdpa.RDS")
 saveRDS(V_stat_matrix,file = "./output/V_stat_matrix_hdpa.RDS")
 Sys.time()-srm
+
+infected_over_time_runs<- readRDS(file = "./output/infected_over_time_runs_60vaccination_hdpa.RDS")
+
 
 #summarize
 ggplot(infected_over_time_runs%>%reframe(.by = run,
@@ -158,6 +179,17 @@ ggplot(infected_over_time_runs%>%reframe(.by = run,
 
 #visualize
 ggplot(infected_over_time_runs%>%filter(Time>0))+geom_path(aes(Time,I,colour = as.factor(run)))+theme(legend.position = "none")
+infected_over_time_runs<- readRDS(file = "./output/infected_over_time_runs_60vaccination_hdpa.RDS")
+ggplot(infected_over_time_runs%>%reframe(.by = run,
+                                         Detected = max(C),
+                                         Preemptive = max(PC))%>%reshape2::melt(id.vars="run"),aes(value))+
+  geom_histogram(aes(y =after_stat(count/sum(count)),fill = variable),position = "identity",binwidth = 1)+
+  scale_fill_manual(values =c("Detected" = "red", "Preemptive" = "gray"), 
+                    labels =c("Detected" = "Detected", "Preemptive" = "Pre-emptive"),
+                    name = "Culling")+
+  labs(x = "Number of farms",y = "Proportion of runs")+facet_grid(variable~.)
+ggsave("./output/figures/spatialHPDAVaccin60culledfarms.png")
+
 
 #length of infectious periods
 histories <- readRDS(histories, file = "./output/histories_60vaccination_hdpa.RDS")
@@ -176,8 +208,11 @@ infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
 
 inf.vac.60vac<- left_join(infectious.periods,joined.vacstatus,by = c("host_id","run"))
 
-exposure.vaccin.fit <- readRDS(fit, file = "./output/exposurefitLayerVaccin.RDS")
-exposure.function.60vac <- function(size, vac){if(vac == 0){max(0,predict(exposure.novaccin.fit, newdata =data.frame(size = size)))}else{max(0,predict(exposure.vaccin.fit, newdata =data.frame(size = size, vaccination =vac)))}}
+exposure.novaccin.fit <- readRDS( file = "./output/exposurefitLayer.RDS")
+exposure.vaccin.fit <- readRDS( file = "./output/exposurefitLayerVaccin.RDS")
+exposure.function.60vac <- function(size, vac){if(vac == 0)
+{max(0,predict(exposure.novaccin.fit, newdata =data.frame(size = size)))}
+  else{max(0,predict(exposure.vaccin.fit, newdata =data.frame(size = size, vaccination =vac)))}}
 exposure.function.60vac(10000,0)
 exposure.function.60vac(10000,0.6)
 
@@ -185,15 +220,21 @@ inf.vac.60vac$exposure <- mapply(exposure.function.60vac, inf.vac.60vac$SIZE, in
 exposure.60vaccin.tot <- inf.vac.60vac%>%reframe(.by = run,
                                                     tot.exposure = sum(exposure))
 mean.exposure.novaccin <- mean(exposure.novaccin.tot$tot.exposure)
+mean.exposure.vaccin <- mean(exposure.60vaccin.tot$tot.exposure)
 exposure.total <- rbind(cbind(exposure.novaccin.tot, vac = 0),cbind(exposure.60vaccin.tot, vac = 0.6))
 exposure.total$ratio <- exposure.total$tot.exposure/mean.exposure.novaccin
-ggplot(exposure.total)+geom_histogram(aes(ratio, fill = as.factor(vac)), position = 'identity',colour = "black",alpha = 0.5)+geom_vline(aes(xintercept = 1))
+ggplot(exposure.total)+geom_histogram(aes(ratio, fill = as.factor(vac)),
+                                      binwidth = 0.5,position = 'identity',colour = "black",alpha = 0.5)+
+  geom_vline(aes(xintercept = 1))+
+  scale_fill_manual(values =c("0" = "red","0.6"= "black"), name = "High titre",labels =c("0" = "0%","0.6"= "60%") )+
+  labs(x = "Ratio", y = "Count")
+ggsave("./output/figures/exposure.spatial.clinprot.png")
 
 #Vaccination has 50% high titre with reduced transmission rate and 50% death of low titre birds
 rate.fit <- readRDS( "./output/pasdetRate_clinprot.RDS")
 shape.fit <- readRDS( "./output/pasdetShape_clinprot.RDS")
 
-Tdist = function(vacstat){
+Tdist = function(vacstat,type,fadeout){
   if(vacstat==0)
   {
     shape = shape.fit[1,2]
@@ -209,7 +250,7 @@ Tdist = function(vacstat){
 srm <- Sys.time()
 index.farm <- hpda
 max.runs <- length(index.farm)
-vac.func <- function(x){ifelse(x == "LAYER",10^-6 #does not effect pmajor 
+vac.func <- function(x){ifelse(x == "LAYER",10^-6 #does not effect pmajor but changes the infectious period
                                ,0)}
 source("./src/SpatialSellkeModel_init_simuls.R")
 #run the model
@@ -230,7 +271,16 @@ ggplot(infected_over_time_runs%>%reframe(.by = run,
 
 #visualize
 ggplot(infected_over_time_runs%>%filter(Time>0))+geom_path(aes(Time,I,colour = as.factor(run)))+theme(legend.position = "none")
-
+infected_over_time_runs<- readRDS(file = "./output/infected_over_time_runs_clinprot_hdpa.RDS")
+ggplot(infected_over_time_runs%>%reframe(.by = run,
+                                         Detected = max(C),
+                                         Preemptive = max(PC))%>%reshape2::melt(id.vars="run"),aes(value))+
+  geom_histogram(aes(y =after_stat(count/sum(count)),fill = variable),position = "identity",binwidth = 1)+
+  scale_fill_manual(values =c("Detected" = "red", "Preemptive" = "gray"), 
+                    labels =c("Detected" = "Detected", "Preemptive" = "Pre-emptive"),
+                    name = "Culling")+
+  labs(x = "Number of farms",y = "Proportion of runs")+facet_grid(variable~.)
+ggsave("./output/figures/spatialHPDAVaccinClinProtculledfarms.png")
 #length of infectious periods
 joined.histories <- NULL;joined.vacstatus<- NULL;
 for(it in c(1:length(histories))){
@@ -244,7 +294,29 @@ infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
                                                 Culled = max(Type_event)==4,
                                                 Infected = min(Type_event)==2)
 
-inf.vac<- left_join(infectious.periods,joined.vacstatus,by = c("host_id","run"))
+inf.vac.clinprot<- left_join(infectious.periods,joined.vacstatus,by = c("host_id","run"))
+exposure.clinprot.fit <- readRDS( file = "./output/exposurefitLayerVaccinClinprot.RDS")
+
+inf.vac.clinprot$exposure<- predict(exposure.clinprot.fit, newdata = data.frame(detection.time =inf.vac.clinprot$Tinf))
+exposure.clinprot.tot <- inf.vac.clinprot%>%reframe(.by = run,
+                                                   tot.exposure = sum(exposure))
+
+exposure.tot <- rbind(cbind(exposure.novaccin.tot, scenario = "Baseline"),
+                       cbind(exposure.60vaccin.tot, scenario = "Reduced transmission"),
+                       cbind(exposure.clinprot.tot, scenario = "Clinical protection"))
+
+exposure.tot$ratio <- exposure.tot$tot.exposure/mean.exposure.novaccin
+ggplot(exposure.tot)+
+  geom_histogram(aes(x = ratio), fill = "red", alpha = 0.5)+
+  geom_vline(aes(xintercept = 1))+
+  facet_grid(.~scenario)
+ggsave("./output/figures/spatialexposure.png")
+exposure.tot%>%reframe(.by = scenario,
+                       median = median(ratio),
+                       low = quantile(ratio,.25),
+                       high = quantile(ratio,.75),
+                       above1 = sum(ratio>1)/100   )
+
 
 #low poultry density area####
 #no vaccination ####

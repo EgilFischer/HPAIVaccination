@@ -504,7 +504,7 @@ surveillance.layer.clinprot<- cbind(surveillance.layer.clinprot,surveillance.lay
 
 
 saveRDS(surveillance.layer.clinprot,"./output/surveillancelayerclinprot.RDS")
-readRDS("./output/surveillancelayerclinprot.RDS")
+surveillance.layer.clinprot<-readRDS("./output/surveillancelayerclinprot.RDS")
 
 ggplot(data = surveillance.layer.clinprot%>%
          select(c("run","rep","scenario","pas.det.time","ac.det.time","min.det.time"))%>%
@@ -542,8 +542,9 @@ dists$shape <- as.numeric(dists$shape)
 dists$rate <- as.numeric(dists$rate)
 dists$mean <- dists$shape/dists$rate
 dists$var <- dists$shape/dists$rate^2
-
 dists
+
+
 #plot those that are needed
 ggplot(data.frame(x = c(1:20000)*.001), aes(x))+
   lapply(c(1:8), function(k){stat_function(fun=dgamma, args=list(shape=dists$shape[k], rate = dists$rate[k]))})+xlim(c(0,40))
@@ -599,7 +600,7 @@ baseline.average.clin <- humanexposure.layer.clin%>%
                                                                     mean.det.exposure = mean(detection.exposure),
                                                                     mean.tot.exposure = mean(total.exposure))
 #join with exposure 
-humanexposure.layer.clin <- cbind(humanexposure.layer.clin, baseline.average.clin)
+humanexposure.layer.clin <- left_join(humanexposure.layer.clin, baseline.average.clin)
 
 #calculate ratio
 humanexposure.layer.clin$ratio.det <- humanexposure.layer.clin$detection.exposure/humanexposure.layer.clin$mean.det.exposure
@@ -636,6 +637,7 @@ ggplot(humanexposure.layer.clin%>%filter(detection.method =="pas.det.time")) +
 ggsave("./output/figures/humanexposurelayer_clinprot_pas.png")
 
 #average ratios
+
 humanexposure.layer.clin%>%reframe(.by = c(scenario,detection.method),
                             mean = mean(ratio.det),
                             min = min(ratio.det),
@@ -643,6 +645,16 @@ humanexposure.layer.clin%>%reframe(.by = c(scenario,detection.method),
                             perc25 = quantile(ratio.det,0.25),
                             perc75 =quantile(ratio.det,0.75)
 )
+
+
+
+fit <- lm(detection.exposure ~  detection.time, 
+          data = humanexposure.layer.clin%>%filter(rep == 1 & detection.method=="pas.det.time"& is.finite(detection.time)))
+summary(fit)
+drop1(fit)
+predict(fit, newdata = data.frame(detection.time = 10))
+
+saveRDS(fit, file = "./output/exposurefitLayerVaccinClinprot.RDS")
 
 #Waning immunity ####
 #add the 32 000 animal farm without vaccination as baseline
