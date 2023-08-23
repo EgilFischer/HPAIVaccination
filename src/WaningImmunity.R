@@ -1,8 +1,10 @@
 #load libraries
 source("./src/loadLibraries.R") 
 
-TiterWaning <- read_csv("./input/TiterWaning.csv")
-TiterWaning <- reshape2::melt(TiterWaning,id.vars = c("Time"))
+#paper Mirzaie
+TiterWaningM <- read_csv("./input/TiterWaningMirzaie.csv")
+TiterWaningM <- reshape2::melt(TiterWaning,id.vars = c("Time"))
+
 mod <- lm(value ~ Time * variable, data = TiterWaning)
 drop1(mod)
 mod.uni <- lm(value ~ Time, data = TiterWaning)
@@ -49,3 +51,40 @@ ggplot(data = plot.data.waning)+
   geom_hline(yintercept = c(0.75),linetype = "solid")+
   ylim(0, 1.001)
 ggsave("./output/figures/Waning.png")
+
+
+#Paper Rudolf et al
+TitreWaningR <- read_delim("./input/TitreWaningRudolf2010.csv", delim =";")
+library(bbmle)
+
+LL <- function(mu, vaccin.status = "BI"){
+  dataToFit <- TitreWaningR%>%filter(VaccinStatus ==vaccin.status)
+  -log(sum(dbinom(x = dataToFit$PosH5N2, size = dataToFit$NH5N2, p = f(-mu*dataToFit$TimeWeeks))))
+}
+curve<-sapply(seq(0,0.05,0.001),LL)
+plot(seq(0.,0.05,0.001),curve)
+with(TitreWaningR%>%filter(VaccinStatus =="BI"),plot(x = TimeWeeks,y = PosH5N2/NH5N2))
+fit<- mle2(LL,c(mu =0.02))
+fit
+fit@fullcoef/7
+
+#fit generalized logistic model to the data 
+genlog <- function(mu,f,nu,t){
+  1 - (1+exp(-mu*(t-f)))^(-1/nu)
+}
+sapply(TitreWaningR$TimeWeeks,genlog, f = 55, mu = 0.1, nu = 0.1 )
+
+LL <- function(mu,f,nu, vaccin.status = "BI"){
+  dataToFit <- TitreWaningR%>%filter(VaccinStatus ==vaccin.status)
+  -log(sum(dbinom(x = dataToFit$PosH5N2, size = dataToFit$NH5N2, p = sapply(TitreWaningR$TimeWeeks,FUN = genlog, f = f, mu = mu, nu = nu))))
+}
+sapply(TitreWaningR$TimeWeeks,genlog, f = 1, mu = 1, nu = 1)
+
+fit<- mle2(LL,start = list(f =55, mu = 2),fixed = list(nu =1))
+fit
+genlogpar <- function(t){with(as.list(fit@fullcoef),
+                              1 - (1+exp(-mu*(t-f)))^(-1/nu))
+}          
+plot((TitreWaningR%>%filter(VaccinStatus =="BI"))$TimeWeeks ,
+     sapply((TitreWaningR%>%filter(VaccinStatus =="BI"))$TimeWeeks,genlogpar),"l", ylim=c(0,1))
+points((TitreWaningR%>%filter(VaccinStatus =="BI"))$TimeWeeks ,(TitreWaningR%>%filter(VaccinStatus =="BI"))$PosH5N2/60 )
