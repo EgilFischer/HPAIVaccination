@@ -88,3 +88,19 @@ genlogpar <- function(t){with(as.list(fit@fullcoef),
 plot((TitreWaningR%>%filter(VaccinStatus =="BI"))$TimeWeeks ,
      sapply((TitreWaningR%>%filter(VaccinStatus =="BI"))$TimeWeeks,genlogpar),"l", ylim=c(0,1))
 points((TitreWaningR%>%filter(VaccinStatus =="BI"))$TimeWeeks ,(TitreWaningR%>%filter(VaccinStatus =="BI"))$PosH5N2/60 )
+
+LL.gamma <- function(shape,rate, vaccin.status = "BI"){
+  dataToFit <- TitreWaningR%>%filter(VaccinStatus ==vaccin.status)
+  with(TitreWaningR%>%filter(VaccinStatus =="BI"),sum((NH5N2-PosH5N2)*log(pgamma(TimeWeeks,shape,rate))+PosH5N2*log((1-pgamma(TimeWeeks,shape,rate)))))
+}
+
+LL.gamma(50,.10)
+pgamma(77,60,.5)
+
+fit.gamma<- mle2(LL.gamma,start = list(shape = 60,rate =1 ),fixed = list(),method = "Nelder-Mead")
+fit.gamma
+with((TitreWaningR%>%filter(VaccinStatus =="BI")),
+     plot(TimeWeeks,1-pgamma(TimeWeeks,fit.gamma@fullcoef["shape"], fit.gamma@fullcoef["rate"]),"l", ylim = c(0,1)))
+with((TitreWaningR%>%filter(VaccinStatus =="BI")),
+     points(TimeWeeks,PosH5N2/NH5N2))
+

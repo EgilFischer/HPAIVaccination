@@ -1,8 +1,8 @@
 # Model the transmission event between hosts
 # Define the function handling the events in the spatial transmission model
 # Event function has four entries: event_time= time at which an event occurs, eventtype= type of event, statustype=status of host,id_= ID of host
-# eventtype: 2=infection; 3,4 and 5 =removal by culling, pre-emptive culling or fade out;
-# statustype: 1= susceptible; 2= infectious; 3= culled;4 = pre-emptive culled; 5 = fade-out;
+# eventtype: 2=infection; 3,4 and 5 =removal by culling, screen and cull or fade out;
+# statustype: 1= susceptible; 2= infectious; 3= culled;4 = screened and culled; 5 = fade-out;
 
 event <- function(time_event,eventype,statustype,id_){
    if (eventype==2 & statustype==1){
@@ -47,7 +47,7 @@ event <- function(time_event,eventype,statustype,id_){
     #determine to schedule fade out or culling event
     fadeout_culling <- 2*F_vector[id_] + 3;
     #update the list of hosts to remove
-    #check preemptive culling of this farm
+    #check screened and culling of this farm
     if(!is.null(List_to_remove[List_to_remove$id_host==id_,])&length(List_to_remove[List_to_remove$id_host==id_,]$Event_time)>0)  {
       #check if new removal is previous to culling
       if(tt+T_inf[id_]< List_to_remove[List_to_remove$id_host==id_,]$Event_time){
@@ -61,22 +61,22 @@ event <- function(time_event,eventype,statustype,id_){
         rbind(List_to_remove,data.frame(Event_time=tt+T_inf[id_],Type_event= fadeout_culling,id_host=id_
         ))
     }
-    #add additional preemptive culling
-    preemptivecul <- which(c(1:totpoints)*cullingmatrix[id_,]!=0)#get all farms within the culling radius
-    for(iter in preemptivecul){
-      #only cull non-culled farms
-      if(Status[iter]<=2)
+    #add additional screened and culling
+    screencul <- which(c(1:totpoints)*cullingmatrix[id_,]!=0)#get all farms within the screening radius
+    for(iter in screencul){
+      #only cull infectious farms
+      if(Status[iter] ==2)#only cull infectious farms
       {
-      #check preemptive culling of this farm
+      #check culling/fade out of this farm is already scheduled
       if(!is.null(List_to_remove[List_to_remove$id_host==iter,])&length(List_to_remove[List_to_remove$id_host==iter,]$Event_time)>0)  {
         #check if new removal is previous to culling
         if(tt+T_inf[id_]+culling.delay< List_to_remove[List_to_remove$id_host==iter,]$Event_time){
-          #remove replace time
+          #replace time for culling
           List_to_remove[List_to_remove$id_host==iter,]$Event_time <<- tt+T_inf[id_]+culling.delay;
           List_to_remove[List_to_remove$id_host==iter,]$Type_event <<- 4;
         }
       }else{
-        #add this farm
+        #add this farm for culling
         List_to_remove <<-
           rbind(List_to_remove,data.frame(Event_time=tt+T_inf[id_]+culling.delay,Type_event=4,id_host=iter
           ))
@@ -111,7 +111,7 @@ event <- function(time_event,eventype,statustype,id_){
             Status[id_] <<- eventype #culled but either by detection (3) or neighbourhood culling (4)
             indexI[id_] <<- eventype #culled, it will not contribute to the infectious matrix anymore
             indexS[id_] <<- eventype #culled, it is not susceptible anymore
-            # save the number of infected, culled and preemptive culled over time in a list
+            # save the number of infected, culled and screened and culled over time in a list
             infected_over_time <<-
               rbind(infected_over_time,
                     c(time_event,length(indexI[indexI==1]), 
