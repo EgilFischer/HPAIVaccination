@@ -23,7 +23,8 @@ source("./src/loadLibraries.R")
 #   beta = matrix(c(1.13, 1.13,0.05,0.05),ncol = 2),#,#transmission coefficient matrix for a 2x2 matrix (1 -> 1, 1->2, 2-> 1, 2-> 2)#Use values for infectivity and infectious periods from Sitaris et al 2016 https://doi.org/10.1098/rsif.2015.0976#Type 1  = not protected by vaccination and type 2 = protected by vaccination
 #   infectious.period = c(3.0,4.0),#Duration infectious period 
 #   variance.infectious.period = c(3.0,4.0)^2, #Variance infectious period
-#   transRate = matrix(c(0,0.012,0.0,0), nrow = 2), #value based on https://nvaidya.sdsu.edu/SIAP2015.pdf #transition rates should be of size itypes x itypes with 0 on diagonal
+#   transShape = matrix(c(0,30,0.0,0), nrow = 2), #value based on https://nvaidya.sdsu.edu/SIAP2015.pdf #transition rates should be of size itypes x itypes with 0 on diagonal
+#   transRate = matrix(c(0,0.4,0.0,0), nrow = 2), #value based on https://nvaidya.sdsu.edu/SIAP2015.pdf #transition rates should be of size itypes x itypes with 0 on diagonal
 #   pdie = c(0.01,0.01),#probability of dying at end of infectious period
 #   mortRate = 0.0005/7 #per capita death rate #Mortality events - based on performance reports and pers. com. mieke matthijs 0.5% per week
 # )
@@ -36,7 +37,8 @@ inits <- with(param.list,{list(
 
 functions <- with(param.list, {list(
  dI = function(U,itype){return(qgamma(U, shape = infectious.period[itype]^2/variance.infectious.period[itype] , rate = infectious.period[itype]/variance.infectious.period[itype]))}, #exponential function#Duration infectious period as function of a random variable U
- dT = function(U,itype1,itype2){return(-log(1 -U)/transRate[itype1,itype2])}, #exponential function
+ dT = function(U,itype1,itype2){return(qgamma(U, shape =transShape[itype1,itype2],rate =transRate[itype1,itype2]))}, #transition
+ pT = function(t,itype1,itype2){return(pgamma(t, shape =transShape[itype1,itype2],rate =transRate[itype1,itype2]))},
  dLE = function(U){return(-log(1 -U)/mortRate)} #life expectancy as function of random variable U
 )})
 
@@ -46,6 +48,8 @@ functions <- with(param.list, {list(
 #Simulation of multitype SIR with transitions in both directions   (fromcurrentState = FALSE)
 sim.multitypeSIR<- function(param.list,init, functions, seed = NULL, fromcurrentState = TRUE){
   with(c(param.list,init,functions),{
+    
+  if(max.time-intro.time <0)stop("max.time-intro.time <0");
   set.seed(seed); 
   #initialize
   output <- list(time = c(0), N = c(N0),C=c(0), run =c(1),dt = c(0))
@@ -120,9 +124,24 @@ sim.multitypeSIR<- function(param.list,init, functions, seed = NULL, fromcurrent
           if(i!=j){
             if(length(indiv.states[indiv.states$state=="S" & indiv.states$itype == i,]$id)>0)
             {
-            events <- rbind(events,data.frame(type = c(paste0("T",i,j)), time = sapply(FUN = dT, X = runif(state$S[i]), 
-                                                                                     itype1 = i, itype2 = j),
-                                            id = indiv.states[indiv.states$state=="S" & indiv.states$itype == i,]$id))
+              #get proportion already changed state
+              pchange <- 1 - pT(intro.time,i,j);
+              #transition times
+              ttimes <- data.frame(type = c(paste0("T",i,j)), 
+                         time = sapply(FUN = dT, X = (1 - pchange) + pchange*runif(state$S[i]), 
+                                       itype1 = i, itype2 = j)-intro.time,
+                         id = indiv.states[indiv.states$state=="S" & indiv.states$itype == i,]$id)
+              stopitintime = 0;
+              while(min(ttimes$time)<0 )
+              {
+                stopitintime = stopitintime + 1;
+                if(stopitintime>50)stop("Not efficient enough")
+                #replace negative values
+                ttimes[ttimes$time<0,]<- sapply(FUN = dT, X = (1 - pchange) + pchange*runif(sum(ttimes$time<0)), 
+                                                 itype1 = i, itype2 = j)-intro.time
+              }
+              #add those that are within the simulation scope
+              events <- rbind(events,ttimes[ttimes<= max.time,])
             }
           }
         }
@@ -134,7 +153,7 @@ sim.multitypeSIR<- function(param.list,init, functions, seed = NULL, fromcurrent
     
     #remove events that will never happen
     events <- filter(events,time != Inf)
-    events <- filter(events,time < max.time)
+    events <- filter(events,time < max.time-intro.time)
     #order events by time of execution
     events <- events[order(events$time),]
     
@@ -351,7 +370,8 @@ simulate.multitypeSIR <- function(param.list, seed = NULL){
   inits$S0 <- with(param.list,{round(c(1-p.hightitre,p.hightitre)*N0,digits = 0)})-inits$I0 - inits$R0
   funcs <- with(param.list, {list(
     dI = function(U,itype){return(qgamma(U, shape = infectious.period[itype]^2/variance.infectious.period[itype] , rate = infectious.period[itype]/variance.infectious.period[itype]))}, #exponential function#Duration infectious period as function of a random variable U
-    dT = function(U,itype1,itype2){return(-log(1 -U)/transRate[itype1,itype2])}, #exponential function
+    dT = function(U,itype1,itype2){return(qgamma(U, shape =transShape[itype1,itype2],rate =transRate[itype1,itype2]))}, #
+    pT = function(t,itype1,itype2){return(pgamma(t, shape =transShape[itype1,itype2],rate =transRate[itype1,itype2]))},
     dLE = function(U){return(-log(1 -U)/mortRate)} #life expectancy as function of random variable U
   )}) ;
   

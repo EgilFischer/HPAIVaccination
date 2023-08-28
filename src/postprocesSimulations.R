@@ -68,16 +68,18 @@ plot.output.sparse <- function(output,vars,title = NULL, frac = 0.5){
 }
 
 #plot a grid with outputs 
-plot.output.grid <- function(output,vars,title = NULL, frac = NULL , scales = "fixed", scenario.label = NULL){
+plot.output.grid <- function(output,vars,title = NULL, frac = NULL , scales = "fixed", scenario.label = NULL, itype.label = NULL){
     if(is.null(frac)){out = output}else{
       out <- data.frame(output)%>%sample_n(round(frac*length(output$time)))
     }
     ggplot(data =
            data.frame(out)%>%select(all_of(c(vars,"time", "run","scenario")))%>%reshape2::melt(id.vars = c("time","run","scenario"),value.name = "prevalence",variable.name=c("itype")))+
     geom_step(aes(x = time, y = prevalence,colour = itype, group =run))+
-    ylab("#number of birds")+facet_grid(scenario~itype, 
+    ylab("#number of birds")+
+      facet_grid(scenario~itype, 
                                         scales = scales, 
-                                        labeller = labeller(scenario = scenario.label))+ggtitle(title)
+                                        labeller = labeller(scenario = scenario.label, itype = itype.label))+
+      ggtitle(title)
   
 }
 
