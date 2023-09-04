@@ -34,7 +34,7 @@ load.sims <- function(path, interval = NULL, params = TRUE){
           run.counter = run.counter+1;
           tmp$interval.index <- tmp$time%/%interval;
           tmp$tround <- interval*(tmp$interval.index+sign(tmp$time))
-          tmp <- tmp%>%group_by(tround)%>%slice(n())%>%ungroup
+          tmp <- tmp%>%group_by(tround)%>%dplyr::slice(n())%>%ungroup
           tmp$dt <- c(0,tail(tmp$time,-1)-head(tmp$time,-1) )
             if(!exists("tmp.output")) {
               tmp.output <-tmp
@@ -68,18 +68,22 @@ plot.output.sparse <- function(output,vars,title = NULL, frac = 0.5){
 }
 
 #plot a grid with outputs 
-plot.output.grid <- function(output,vars,title = NULL, frac = NULL , scales = "fixed", scenario.label = NULL, itype.label = NULL){
+plot.output.grid <- function(output,vars,title = NULL, frac = NULL , scales = "fixed", scenario.label = NULL, scenario.levels = NULL,itype.label = NULL, itype.levels =NULL){
     if(is.null(frac)){out = output}else{
       out <- data.frame(output)%>%sample_n(round(frac*length(output$time)))
     }
-    ggplot(data =
-           data.frame(out)%>%select(all_of(c(vars,"time", "run","scenario")))%>%reshape2::melt(id.vars = c("time","run","scenario"),value.name = "prevalence",variable.name=c("itype")))+
+  out <- data.frame(out)%>%select(all_of(c(vars,"time", "run","scenario")))%>%reshape2::melt(id.vars = c("time","run","scenario"),value.name = "prevalence",variable.name=c("itype"))
+  scenario.levels <- if(is.null(scenario.levels)){unique(out$scenario)}else scenario.levels;
+  itype.levels <- if(is.null(itype.levels)){unique(out$itype)}else itypes.levels;
+  out$scenario <- factor(out$scenario,levels = scenario.levels)
+  out$itype <- factor(out$itype,levels = itype.levels);
+  ggplot(data =out)+
     geom_step(aes(x = time, y = prevalence,colour = itype, group =run))+
     ylab("#number of birds")+
-      facet_grid(scenario~itype, 
-                                        scales = scales, 
-                                        labeller = labeller(scenario = scenario.label, itype = itype.label))+
-      ggtitle(title)
+    facet_grid(scenario~itype, 
+                scales = scales, 
+                labeller = labeller(scenario = scenario.label, itype = itype.label))+
+    ggtitle(title)
   
 }
 

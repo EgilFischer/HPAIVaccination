@@ -76,7 +76,7 @@ for(i in c(1:length(scenario.list.clinic))){
 
 
 
-#Create other scenarios
+#Waning same strain####
 #introduction at different times since peak protection at t = 0
 intro.time <- c(0, 50, 100, 200,300,400,500)  #initial high-titre = exp(-transRate*introtime)
 1-pgamma(intro.time, shape = 36,rate =0.07)
@@ -102,6 +102,41 @@ for(i in c(1:length(scenario.list.waning))){
   print(Sys.time())
   simulate.multitypeSIR(scenario.list.waning[[i]])
 }
+
+
+
+
+
+
+
+#Waning different strain ####
+#introduction at different times since peak protection at t = 0
+intro.time <- c(0, 50, 100, 200,300,400,500)  #initial high-titre = exp(-transRate*introtime)
+0.7*(1-pgamma(intro.time, shape = 4,rate =0.1/7))
+#Waning scenarios
+scenario.list.waning <- list()
+for(i in c(1:length(intro.time))){
+  t0 <-intro.time[i];
+  param.list <- param.list.baseline.layer;
+  param.list$transShape <- matrix(c(Inf,4,Inf,Inf), nrow = 2) #value based on Rudolf et al 2010
+  param.list$transRate <- matrix(c(0,0.1/7,0.0,0), nrow = 2) #value based on Rudolf et al 2010
+  param.list$runs <- 10;
+  param.list$p.hightitre <- .7*(1-pgamma(intro.time[i], shape = 4,rate =0.1/7))
+  param.list$max.time <-param.list$max.time;
+  param.list$intro.time <- t0;
+  param.list$scenario <- paste0("layerStartTime",t0,"DifStrain");
+  scenario.list.waning[[i]]<- param.list
+}
+
+
+
+for(i in c(1:length(scenario.list.waning))){
+  print(scenario.list.waning[[i]]$scenario);
+  print(Sys.time())
+  simulate.multitypeSIR(scenario.list.waning[[i]])
+}
+
+
 
 
 

@@ -93,18 +93,19 @@ param.list <- list(beta = matrix(c(1.13,1.13,0.05,0.05),nrow =2),
                    mortRate = c(7.14E-05),
                    N0 = 64000)
 param.list$gamma <- 1/param.list$infectious.period
+param.list$variance.infectious.period <- param.list$infectious.period^2
 param.list$mu <- param.list$mortRate
 #exponential distributed infectious period
 model <- model.exp
 Rmodel <- Rmodel.exp
 q1q2.exp <- q1q2(param.list)
 #exponential distributed infectious period using gamma distribution with shape = 1
-param.list$variance.infectious.period <- param.list$infectious.period^2
+
 model <- model.gamma
 Rmodel <- Rmodel.gamma
 q1q2.gamma <-q1q2(param.list)
 #gamma distributed infectious period using gamma distribution with shape = 20
-param.list <- param.list.baseline.layer
+param.list$variance.infectious.period <- (param.list$infectious.period^2) /20
 q1q2.gamma.var <-q1q2(param.list, mortality = TRUE)
 
 

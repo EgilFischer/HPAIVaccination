@@ -45,7 +45,7 @@ event <- function(time_event,eventype,statustype,id_){
                                                        id_host = next_infection_host))
     List_to_infect <<- List_to_infect[order(List_to_infect[,1]),]
     #determine to schedule fade out or culling event
-    fadeout_culling <- 2*F_vector[id_] + 3;
+    fadeout_culling <- 2*F_vector[id_] + 3; F_vector
     #update the list of hosts to remove
     #check screened and culling of this farm
     if(!is.null(List_to_remove[List_to_remove$id_host==id_,])&length(List_to_remove[List_to_remove$id_host==id_,]$Event_time)>0)  {

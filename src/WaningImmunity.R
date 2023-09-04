@@ -1,7 +1,7 @@
 #load libraries
 source("./src/loadLibraries.R") 
 
-#paper Mirzaie
+#paper Mirzaie####
 TiterWaningM <- read_csv("./input/TiterWaningMirzaie2020.csv")
 TiterWaningM <- reshape2::melt(TiterWaningM,id.vars = c("Time"))
 
@@ -53,10 +53,12 @@ ggplot(data = plot.data.waning)+
 #ggsave("./output/figures/Waning.png")
 
 
-#Paper Rudolf et al
+
+#Paper Rudolf et al ####
 TitreWaningR <- read_delim("./input/TitreWaningRudolf2010.csv", delim =";")
 library(bbmle)
 
+#H5N2
 LL <- function(mu, vaccin.status = "BI"){
   dataToFit <- TitreWaningR%>%filter(VaccinStatus ==vaccin.status)
   -log(sum(dbinom(x = dataToFit$PosH5N2, size = dataToFit$NH5N2, p = exp(-mu*dataToFit$TimeWeeks))))
@@ -69,7 +71,20 @@ fit@fullcoef/7
 with(TitreWaningR%>%filter(VaccinStatus =="BI"),plot(x = TimeWeeks,y = PosH5N2/NH5N2))
 lines(seq(0.,max(TitreWaningR$TimeWeeks),1),exp(-fit@fullcoef*seq(0.,max(TitreWaningR$TimeWeeks),1)))
 
-#fit generalized logistic model to the data 
+#H5N1
+LL <- function(mu, vaccin.status = "BI"){
+  dataToFit <- TitreWaningR%>%filter(VaccinStatus ==vaccin.status)
+  -log(sum(dbinom(x = dataToFit$PosH5N1, size = dataToFit$NH5N1, p = exp(-mu*dataToFit$TimeWeeks))))
+}
+curve<-sapply(seq(0,0.05,0.001),LL)
+plot(seq(0.,0.05,0.001),curve)
+fit<- mle2(LL,c(mu =0.02))
+fit
+fit@fullcoef/7
+with(TitreWaningR%>%filter(VaccinStatus =="BI"),plot(x = TimeWeeks,y = PosH5N1/NH5N1))
+lines(seq(0.,max(TitreWaningR$TimeWeeks),1),exp(-fit@fullcoef*seq(0.,max(TitreWaningR$TimeWeeks),1)))
+
+#fit generalized logistic model to the data ####
 genlog <- function(mu,f,nu,t){
   1 - (1+exp(-mu*(t-f)))^(-1/nu)
 }
@@ -90,7 +105,7 @@ plot(seq(0, max((TitreWaningR%>%filter(VaccinStatus =="BI"))$TimeWeeks)) ,
      sapply(seq(0, max((TitreWaningR%>%filter(VaccinStatus =="BI"))$TimeWeeks)),genlogpar),"l", ylim=c(0,1))
 points((TitreWaningR%>%filter(VaccinStatus =="BI"))$TimeWeeks ,(TitreWaningR%>%filter(VaccinStatus =="BI"))$PosH5N2/60 )
 
-#fit gamma distribution
+#fit gamma distribution ####
 LL.gamma <- function(shape,rate, vaccin.status = "BI"){
   dataToFit <- TitreWaningR%>%filter(VaccinStatus ==vaccin.status&TimeWeeks>3)
   with(TitreWaningR%>%filter(VaccinStatus =="BI"),sum((NH5N2-PosH5N2)*log(pgamma(TimeWeeks,shape,rate))+PosH5N2*log((1-pgamma(TimeWeeks,shape,rate)))))
@@ -107,6 +122,24 @@ with((TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)),
      plot(seq(0,max(TimeWeeks),1),1-pgamma(seq(0,max(TimeWeeks),1),fit.gamma@fullcoef["shape"], fit.gamma@fullcoef["rate"]),"l", ylim = c(0,1)))
 with((TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)),
      points(TimeWeeks,PosH5N2/NH5N2))
+
+#H5N1###
+LL.gamma <- function(shape,rate, vaccin.status = "BI"){
+  dataToFit <- TitreWaningR%>%filter(VaccinStatus ==vaccin.status&TimeWeeks>3)
+  with(TitreWaningR%>%filter(VaccinStatus =="BI"),sum((NH5N1-PosH5N1)*log(pgamma(TimeWeeks,shape,rate))+PosH5N1*log((1-pgamma(TimeWeeks,shape,rate)))))
+}
+
+LL.gamma(50,.10)
+pgamma(77,60,.5)
+
+fit.gamma<- mle2(LL.gamma,start = list(shape = 70,rate =1.0),fixed = list(),method = "Nelder-Mead")
+fit.gamma
+fit.gamma@fullcoef[1]/fit.gamma@fullcoef[2]
+fit.gamma@fullcoef[1]/fit.gamma@fullcoef[2]^2
+with((TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)),
+     plot(seq(0,max(TimeWeeks),1),1-pgamma(seq(0,max(TimeWeeks),1),fit.gamma@fullcoef["shape"], fit.gamma@fullcoef["rate"]),"l", ylim = c(0,1)))
+with((TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)),
+     points(TimeWeeks,PosH5N1/NH5N1))
 
 #bayesian fit
 library(rstan)
@@ -181,20 +214,30 @@ with((TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)),
 #all does not work - easier approach
 #We see that at time 77 weeks approximately half of the birds are positive
 TitreWaningR$fH5N2 <- TitreWaningR$PosH5N2/TitreWaningR$NH5N2
+TitreWaningR$fH5N1 <- TitreWaningR$PosH5N1/TitreWaningR$NH5N1
 #given an approximate normal distribution of the infectious periods and tweak it
-
 with((TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)),
      plot(seq(0,max(TimeWeeks),1),1-pgamma(seq(0,max(TimeWeeks),1),30, 0.4),"l", ylim = c(0,1)))
 with((TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)),
      points(TimeWeeks,PosH5N2/NH5N2))
 
+
+with((TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)),
+     plot(seq(0,max(TimeWeeks),1)*7,(1-pgamma(seq(0,max(TimeWeeks),1)*7,4, .1/7)),"l", ylim = c(0,1)))
+
+with((TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)),
+     points(TimeWeeks*7,(1/0.7) *PosH5N1/NH5N1))
+
+
 #scale to days 
 tmp <- TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)
-data.fit <- data.frame(time = seq(0,max(tmp$TimeWeeks*7),1),prob = 1-pgamma(seq(0,max(tmp$TimeWeeks*7),1),36, 0.07))
-data.exp <- data.frame(time = tmp$TimeWeeks*7,prob = tmp$PosH5N2/tmp$NH5N2)
-wane.plot <-  ggplot()+
-  geom_path(data =data.fit , aes(time, prob))+
-  geom_point(data = data.exp, aes(time, prob))+
+data.fit <- rbind(data.frame(time = seq(0,max(tmp$TimeWeeks*7),1),prob = 1-pgamma(seq(0,max(tmp$TimeWeeks*7),1),36, 0.07), strain = "H5N2 - homologous"),
+                  data.frame(time = seq(0,max(tmp$TimeWeeks*7),1),prob = .7*(1-pgamma(seq(0,max(tmp$TimeWeeks*7),1),4, 0.1/7)), strain = "H5N1 - heterologous"))
+data.exp <- rbind(data.frame(time = tmp$TimeWeeks*7,prob = tmp$PosH5N2/tmp$NH5N2, strain = "H5N2 - homologous"),
+                  data.frame(time = tmp$TimeWeeks*7,prob = tmp$PosH5N1/tmp$NH5N1, strain = "H5N1 - heterologous"))
+ggplot()+
+  geom_path(data =data.fit , aes(time, prob,colour = strain))+
+  geom_point(data = data.exp, aes(time, prob,colour = strain))+
   labs(x = "Time (days post full vaccination)", y = "Prob. high titre")+
   ylim(0,NA)+
   ggtitle("Prob. of having a high titre")

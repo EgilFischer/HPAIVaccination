@@ -50,9 +50,8 @@ for (ii in c(1:numsim)){
   #infectious period is determined by the vaccination status and fade-out or culling
   T_inf_matrix[ii,] <- mapply(Tdist, vacstat = V_stat_matrix[ii,], type = spatial.input$TYPE, fadeout = F_matrix[ii,])
   #probability of major outbreak
-  P_maj_matrix[ii,] <- sapply( V_stat_matrix[ii,], function(p){pmajor(param.list.baseline.layer, p,10)$pmajor})
+  P_maj_matrix[ii,] <- sapply( V_stat_matrix[ii,], function(p){round(pmajor(param.list.baseline.layer, p,10)$pmajor,10)})
 }
-
 #check with distributions fitted to simulations
 # ggplot()+
 #   geom_point(data= data.frame(Tinf = T_inf_matrix[1,], Vac = V_stat_matrix[1,]),aes(Vac,Tinf))+
