@@ -138,3 +138,66 @@ human.exposure.detection.multiple.runs<- function(output, beta.human,detection.t
   return(exposure)
 }
 
+#fit distributions
+fit.distribution <-function(data, 
+                            distr = "gamma", 
+                            method = c("pas.det.time","ac.det.time","min.det.time"),
+                            scale  = 1, #prevent numerical problems with very large numbers
+                            long.form = FALSE, 
+                            long.var = "detection.exposure",
+                            added.vars =NULL){
+  dists <- NULL;
+  for(its in unique(data$scenario)){
+    det.data <- data%>%filter(scenario == its)
+    for(m in method)
+     { 
+
+      # #select unique values for passive detection
+       if(m == "pas.det.time"){
+          #number of simulations
+          n <- max(det.data$run)
+          if(!long.form){ tmp <-  det.data%>%filter(det.data[,m]!=Inf)%>%filter(rep ==1) %>%dplyr::select(all_of(m)) }
+          else {
+            tmp <-  det.data%>%filter(det.data[, long.var]!=Inf)%>%filter(rep ==1) %>%dplyr::filter(detection.method==m)%>%select(all_of(long.var))
+          }
+        }else{
+         #number of simulations
+         n <- max(det.data$run)*max(det.data$rep)
+         if(!long.form){
+           tmp <- det.data%>%dplyr::select(all_of(m))%>%filter(det.data[,m]!=Inf)
+         }
+          else
+          {
+            tmp <-  det.data%>%filter(det.data[, long.var]!=Inf)%>%dplyr::filter(detection.method==m)%>%select(all_of(long.var))
+          }
+        }
+
+      if(length(tmp[,1])>1)
+      {
+        fit <- fitdistrplus::fitdist(data = tmp[,1]/scale, distr = distr, method = "mle")
+        summary.fit <-summary(fit)
+        tmp.dist<- data.frame(shape = as.numeric(summary.fit$estimate[1]),
+                              rate = as.numeric(summary.fit$estimate[2])/scale,
+                              scenario = its,
+                              detection.method = m,
+                              pdetect = length(tmp[,1])/n)
+        for(v in c(1:length(add.vars)))
+          {
+            tmp.dist[,names(added.vars)[v]]<- added.vars[[v]][its]
+          }
+      }else{
+        tmp.dist <- data.frame(shape =c(0), rate =c(10^-5),scenario = its, detection.method = m, pdetect = 0)
+        for(v in c(1:length(add.vars)))
+        {
+          tmp.dist[,names(added.vars)[v]]<- added.vars[[v]][its]
+        }
+        }
+      dists <-rbind(dists,tmp.dist)
+       }
+    }
+  
+  dists$mean <- dists$shape/dists$rate
+  dists$var <- dists$shape/dists$rate^2
+  return(dists)
+  
+}

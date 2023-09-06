@@ -16,7 +16,7 @@ spatial.input<- read_excel("./input/20230404_AI_AnimalLocations_SizeType_v02.xls
 #scale coordinates to km
 spatial.input$Xkm <- spatial.input$X/1000
 spatial.input$Ykm <- spatial.input$Y/1000
-spatial.input$nr <- c(1:nrow(spatial.input))
+spatial.input$host_id <- c(1:nrow(spatial.input))
 
 #screening and culling
 culling.radius <- 1
@@ -120,7 +120,7 @@ infected_over_time_runs<- readRDS( file = "./output/infected_over_time_runs_nova
 histories <- readRDS(file = "./output/histories_novaccination_hdpa.RDS")
 V_stat_matrix <- readRDS(file = "./output/V_stat_matrix_hdpa.RDS")
 joined.histories<- readRDS(file = "./output/joinedhistories_novaccination_hdpa.RDS")
-joined.vacstatus<- readRDS( file = "./output/joinedhistories_novaccination_hdpa.RDS")
+joined.vacstatus<- readRDS( file = "./output/joinedvacstatus_novaccination_hdpa.RDS")
 
 
 #visualize  & summarize runds ####
@@ -139,8 +139,9 @@ infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
                                                 Tinf = diff(Event_time),
                                                 Culled = max(Type_event)==4,
                                                 Infected = min(Type_event)==2)
-
+#add vaccination status, farn type and size 
 inf.vac.novaccin<- left_join(infectious.periods,joined.vacstatus,by = c("host_id","run"))
+
 #determine the exposure ###
 exposure.novaccin.fit <- readRDS(file = "./output/exposurefitLayerPas.RDS")
 
