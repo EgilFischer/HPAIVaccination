@@ -249,28 +249,29 @@ fit.pas.mean.sizetype <- lm(mean ~ size + type , data = dists%>%filter(detection
 drop1(fit.pas.mean.sizetype)
 summary(fit.pas.mean.sizetype)
 saveRDS(fit.pas.mean.sizetype, "./output/detMean_sizetype_passive.RDS")
+fit.pas.mean.sizetype<- readRDS("./output/detMean_sizetype_passive.RDS")
 
-fit.pas.mean.sizetype <- lm(mean ~ size + type , data = dists%>%filter(detection.method =="min.det.time"))
-drop1(fit.pas.mean.sizetype)
-summary(fit.pas.mean.sizetype)
-saveRDS(fit.pas.mean.sizetype, "./output/detMean_sizetype_minimum.RDS")
-
+fit.min.mean.sizetype <- lm(mean ~ size + type , data = dists%>%filter(detection.method =="min.det.time"))
+drop1(fit.min.mean.sizetype)
+summary(fit.min.mean.sizetype)
+saveRDS(fit.min.mean.sizetype, "./output/detMean_sizetype_minimum.RDS")
+fit.min.mean.sizetype <- readRDS("./output/detMean_sizetype_minimum.RDS")
 
 fit.pas.var.sizetype <- lm(var ~ size + type  , data = dists%>%filter(detection.method =="pas.det.time"))
 drop1(fit.pas.var.sizetype)
 summary(fit.pas.var.sizetype)
 saveRDS(fit.pas.var.sizetype, "./output/detVar_sizetype_passive.RDS")
+fit.pas.var.sizetype <- readRDS("./output/detVar_sizetype_passive.RDS")
 
+fit.min.var.sizetype <- lm(var ~ size + type , data = dists%>%filter(detection.method =="min.det.time"))
+drop1(fit.min.var.sizetype)
+summary(fit.min.var.sizetype)
+fit.min.var.sizetype <- lm(var ~ size , data = dists%>%filter(detection.method =="min.det.time"))
+drop1(fit.min.var.sizetype)
+summary(fit.min.var.sizetype)
 
-fit.pas.var.sizetype <- lm(var ~ size + type , data = dists%>%filter(detection.method =="min.det.time"))
-drop1(fit.pas.var.sizetype)
-summary(fit.pas.var.sizetype)
-fit.pas.var.sizetype <- lm(var ~ size , data = dists%>%filter(detection.method =="min.det.time"))
-drop1(fit.pas.var.sizetype)
-summary(fit.pas.var.sizetype)
-
-saveRDS(fit.pas.var.sizetype, "./output/detVar_sizetype_minimum.RDS")
-
+saveRDS(fit.min.var.sizetype, "./output/detVar_sizetype_minimum.RDS")
+fit.min.var.sizetype <- readRDS("./output/detVar_sizetype_minimum.RDS")
 
 #human exposure ####
 humanexposure.size.type  <- NULL
@@ -287,7 +288,7 @@ for(k in c(1:length(output.size.type))){
 }
 saveRDS(humanexposure.size.type, "./output/exposure_sizetype.RDS")
 humanexposure.size.type<- readRDS( "./output/exposure_sizetype.RDS")
-dists.exposure <- fit.distribution(humanexposure.size.type, long.form = TRUE, scale = 1000, , added.vars = add.vars)
+dists.exposure <- fit.distribution(humanexposure.size.type, long.form = TRUE, scale = 1000,  added.vars = add.vars)
 ggplot(dists.exposure)+geom_point(aes(size, mean, colour = detection.method))+facet_grid(type~.)
 saveRDS(dists.exposure, "./output/exposureDist_sizetype.RDS")
 dists.exposure <-readRDS("./output/exposureDist_sizetype.RDS")
@@ -295,7 +296,14 @@ dists.exposure <-readRDS("./output/exposureDist_sizetype.RDS")
 fit.pas.mean.sizetype <- lm(mean ~ size + type , data = dists.exposure%>%filter(detection.method =="pas.det.time"))
 drop1(fit.pas.mean.sizetype)
 summary(fit.pas.mean.sizetype)
+ggplot()+
+  geom_point(aes(size, mean, colour =as.factor(type)),dists.exposure%>%filter(detection.method =="pas.det.time"))+
+  geom_(aes(size, val), data.frame(size =dists.exposure%>%filter(detection.method =="pas.det.time")%>%select("size"), val =predict(fit.pas.mean.sizetype) ))
+
+
 saveRDS(fit.pas.mean.sizetype, "./output/exposureMean_sizetype_passive.RDS")
+
+fit.pas.mean.sizetype<-readRDS("./output/exposureMean_sizetype_passive.RDS")
 
 fit.min.mean.sizetype <- lm(mean ~ size + type , data = dists.exposure%>%filter(detection.method =="min.det.time"))
 drop1(fit.min.mean.sizetype)
@@ -306,7 +314,7 @@ ggplot(data =cbind(data.frame(spatial.input.x%>%filter(type %in% c("BROILER","LA
          geom_point(aes(x = size, y = exposure, colour = type ))
        
 saveRDS(fit.min.mean.sizetype, "./output/exposureMean_sizetype_minimum.RDS")
-
+fit.min.mean.sizetype<-readRDS("./output/exposureMean_sizetype_minimum.RDS")
 
 fit.pas.var.sizetype <- lm(sqrt(var) ~ size + type , data = dists.exposure%>%filter(detection.method =="pas.det.time"))
 drop1(fit.pas.var)
@@ -417,10 +425,11 @@ fit.pas.mean.sizevac<-stats::lm(mean ~vac , data = dists%>%filter(detection.meth
 drop1(fit.pas.mean.sizevac)
 summary(fit.pas.mean.sizevac)
 saveRDS(fit.pas.mean.sizevac, "./output/detMean_sizevac_passive.RDS")
+fit.pas.mean.sizevac<- readRDS( "./output/detMean_sizevac_passive.RDS")
 
 fit.pas.sd.sizevac<-stats::lm(sqrt(var) ~vac + size, data = dists%>%filter(detection.method=="pas.det.time"& var >0))
-drop1(fit.sd.sizevac)
-summary(fit.sd.sizevac)
+drop1(fit.pas.sd.sizevac)
+summary(fit.pas.sd.sizevac)
 
 fit.sd.sizevac<-stats::lm(sqrt(var) ~vac , data = dists%>%filter(detection.method=="pas.det.time"& var >0))
 drop1(fit.sd.sizevac)
@@ -584,33 +593,6 @@ ggplot()+
 
 saveRDS(fit.exp.var.min, file = "./output/exposureVarfitLayerMin.RDS")
 
-
-# #plot passive and mimn
-# ggplot(humanexposure.layer%>%filter(detection.method %in% c("pas.det.time","min.det.time"))) +
-#   geom_histogram(aes(ratio.det,after_stat(.15*density), fill = detection.method),binwidth = .15,alpha = 0.5,colour = "black",position = "identity")+
-#   labs(x = bquote('Risk ratio of exposure  (reference = 1)')
-#        , y = "Proportion", fill = "Detection method")+
-#   scale_fill_manual(values=c(pas.det.time = "black",min.det.time= "orange"),
-#                     labels = detection.method.label)+
-#   scale_x_log10(breaks = c(0.0001,0.001,0.01,0.1,1), labels =scales::comma)+
-#   geom_vline(xintercept = 1)+
-#   facet_grid(vaccination~size)+
-#              #,labeller = labeller(scenario = scenario.label))+
-#   ggtitle("Human exposure layers")#+theme(legend.position = 'none')
-# ggsave("./output/figures/humanexposurelayer.png",scale = 1.23)
-# 
-# # ggplot(data =humanexposure.layer) +
-#   geom_histogram( aes(log10(ratio.det),after_stat(.1*density), fill = detection.method),binwidth = .1,colour = "black",alpha = 0.5,position = "identity")+
-#   labs(x = bquote(log[10] ~ 'Risk ratio of exposure  (reference = 0)')
-#        , y = "Proportion", fill = "Detection method")+
-#   scale_fill_manual(values = c(min.det.time = "red",ac.det.time = "orange",pas.det.time = "black"),
-#                     labels = c(min.det.time ="Minimum",ac.det.time ="Active",pas.det.time ="Passive"))+
-#   geom_vline(xintercept = log10(1))+
-#   facet_grid(vaccination~size)+
-#   ggtitle("Human exposure")#+theme(legend.title =  element_text('Prop. high titre'))
-# ggsave("./output/figures/humanexposurelayer.png")
-
-
 #average ratios####
 humanexposure.layer%>%reframe(.by = c(scenario,detection.method),
                                   mean = mean(ratio.det),
@@ -623,22 +605,17 @@ humanexposure.layer%>%reframe(.by = c(scenario,detection.method),
 
 
 
+
+########################################
 #Scenarios with clinical protection ####
+########################################
 #add the 32 000 animal farm without vaccination as baseline
 scenario.clinprot.list <- list(list(scenario = "layerSize32000Vac0"),list(scenario = "layerClinic50Phigh50"),list(scenario = "layerClinic50Phigh0"),list(scenario = "layerClinic01Phigh0"))
 output.layer.clinprot <- lapply(c(1:4),function(i){load.sims(paste0("./output/",gsub(scenario.clinprot.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.01)$output})
 pars.layer.clinprot <- lapply(c(1:4),function(i){load.sims(paste0("./output/",gsub(scenario.clinprot.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.01)}$pars[[1]])
 
+#visualize ####
 
-
-#visualize ##
-# 
-# 
-# for(i in c(1:length(scenario.clinprot.list))){
-#   show(plot.output(output.layer.clinprot[[i]],c("I.1","I.2","R.1","R.2"), scenario.clinprot.list[[i]]$scenario))
-#   ggsave(paste0("./output/figures/", gsub(scenario.clinprot.list[[i]]$scenario.clinprot,pattern = "[.]", replacement = ""),".png"))
-#   gc()  
-# }
 
 plot.output.grid(rbind(cbind(output.layer.clinprot[[1]],scenario = pars.layer.clinprot[[1]]$scenario),
                        cbind(output.layer.clinprot[[2]],scenario = pars.layer.clinprot[[2]]$scenario),
@@ -693,36 +670,13 @@ ggplot(data = surveillance.layer.clinprot%>%
 
 ggsave("./output/figures/scenarios_layer.clinprot_surveillance.png")
 
-dists <- data.frame(shape =c(), rate =c(), scenario =c(), detection.method =c())
-for(method in c("pas.det.time", "min.det.time")){
-  for(its in unique(surveillance.layer.clinprot$scenario))  {
-    #for passive detection only use first repetition otherwise the data is inflated
-    x = surveillance.layer.clinprot%>%
-      filter(rep == 1)%>%
-      filter(scenario == its)%>%dplyr::select(method)
-    x <- x %>%filter(x[,method] != Inf)
-    
-    if(length(x[,method])>1)
-    {
-      fit.gamma <- fitdistrplus::fitdist(data = x[,method], distr = "gamma", method = "mle")
-      sgamma <-summary(fit.gamma)
-      dists<- rbind(dists,c(shape = as.numeric(sgamma$estimate[1]),rate = as.numeric(sgamma$estimate[2]), scenario = its, pdetect = length(x[,method])/10,detection.method = method))
-     
-    }else dists <- rbind(dists,c(shape =c(0), rate =c(10^-5), scenario = its, pdetect = length(x[,method])/10,detection.method = method))
-  }
-}
-names(dists)<-c("shape","rate","scenario","pdetect")
-dists$shape <- as.numeric(dists$shape)
-dists$rate <- as.numeric(dists$rate)
-dists$mean <- dists$shape/dists$rate
-dists$var <- dists$shape/dists$rate^2
-dists
+dists.clinprot.surveillance <- fit.distribution(surveillance.layer.clinprot)
 
-saveRDS(dists, "./output/distsDetClinProt.rds")
-
+saveRDS(dists.clinprot.surveillance, "./output/distsDetClinProt.rds")
+dists.clinprot.surveillance<-readRDS( "./output/distsDetClinProt.rds")
 
 #human exposure Clinical protection ####
-#as we used multiple repeats to determine active surveillance repeat
+#as we used multiple repeats to determine active surveillance repeat###
 humanexposure.layer.clin <- NULL
 
 for(k in c(1:length(scenario.clinprot.list))){
@@ -750,7 +704,10 @@ humanexposure.layer.clin$ratio.tot <- humanexposure.layer.clin$total.exposure/hu
 
 saveRDS(humanexposure.layer.clin, file = "./output/humanexposureLayerClin.RDS")
 humanexposure.layer.clin <- readRDS(file = "./output/humanexposureLayerClin.RDS")
-
+dists.clinprot.exposure <- fit.distribution(humanexposure.layer.clin, 
+                                            long.form= TRUE, 
+                                            long.var = "detection.exposure",
+                                            scale = 1000)
 
 ggplot(humanexposure.layer.clin) +
   geom_histogram(aes(ratio.det,after_stat(.15*density), fill = detection.method),binwidth = .15,alpha = 0.5,colour = "black",position = "identity")+
@@ -765,18 +722,7 @@ ggplot(humanexposure.layer.clin) +
   ggtitle("Human exposure layers")#+theme(legend.position = 'none')
 ggsave("./output/figures/humanexposurelayer_clinprot.png")
 
-# #only passive
-# ggplot(humanexposure.layer.clin%>%filter(detection.method =="pas.det.time")) +
-#   geom_histogram(aes(ratio.det,after_stat(.15*density), fill = detection.method),binwidth = .15,alpha = 0.5,colour = "black",position = "identity")+
-#   #  scale_fill_manual(values=c(pas.det.time = "black",ac.det.time = "red",min.det.time= "orange"),
-#   #                    labels = c(pas.det.time = "Passive",ac.det.time = "Active",min.det.time= "Minimum"))+
-#   xlab("Risk ratio of exposure \n (reference baseline)") + 
-#   ylab("Proportion")+
-#   geom_vline(xintercept = 1)+
-#   lims(x = c(0,3))+
-#   facet_grid(scenario~.,labeller = labeller(scenario = scenario.label.clin))+
-#   ggtitle("Human exposure layers")+theme(legend.position = 'none')
-# ggsave("./output/figures/humanexposurelayer_clinprot_pas.png")
+
 
 #average ratios
 
@@ -789,27 +735,13 @@ humanexposure.layer.clin%>%reframe(.by = c(scenario,detection.method),
 )
 saveRDS(humanexposure.layer.clin%>%reframe(.by = c(scenario,detection.method),
                                            mean = mean(detection.exposure)), file = "./output/MEANexposurefitLayerVaccinClin.RDS")
+dists.clinprot.exposure
 
 
 
-fit <- lm(detection.exposure ~  detection.time, 
-          data = humanexposure.layer.clin%>%filter(rep == 1 & detection.method=="pas.det.time"& is.finite(detection.time)))
-summary(fit)
-drop1(fit)
-predict(fit, newdata = data.frame(detection.time = 10))
-
-saveRDS(fit, file = "./output/exposurefitLayerVaccinClinprotPAS.RDS")
-
-
-fit <- lm(detection.exposure ~  1, 
-          data = humanexposure.layer.clin%>%filter(rep == 1 & detection.method=="min.det.time"& is.finite(detection.time)))
-summary(fit)
-drop1(fit)
-predict(fit, newdata = data.frame(detection.time = 10))
-
-saveRDS(fit, file = "./output/exposurefitLayerVaccinClinprotMIN.RDS")
-
-#Waning immunity ####
+###################################################
+#Waning immunity - same strain           ####
+###################################################
 #add the 32 000 animal farm without vaccination as baseline
 scenario.wane.list <- list(list(scenario = "layerSize32000Vac0"),
                            list(scenario = "layerStartTime0"),
@@ -819,19 +751,18 @@ scenario.wane.list <- list(list(scenario = "layerSize32000Vac0"),
                            list(scenario = "layerStartTime300"),
                            list(scenario = "layerStartTime400"),
                            list(scenario = "layerStartTime500"))
+scenario.names<- surveillance.layer.wane%>%select(scenario)%>%unique
+phigh <- c(0,(1-pgamma(c(0,50,100,200,300,400,500),36,0.07)))
+add.vars <- list(phigh= as.list(setNames( phigh,scenario.names$scenario)),
+                 intro.time = as.list(setNames(c(0,0,50,100,200,300,400,500),scenario.names$scenario)))
+
+
 output.layer.wane <- lapply(c(1:length(scenario.wane.list)),function(i){load.sims(paste0("./output/",gsub(scenario.wane.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.01)$output})
 pars.layer.wane <- lapply(c(1:length(scenario.wane.list)),function(i){load.sims(paste0("./output/",gsub(scenario.wane.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.01)}$pars[[1]])
 
 
 
 #visualize ##
-# 
-# 
-# for(i in c(1:length(scenario.wane.list))){
-#   show(plot.output(output.layer.wane[[i]],c("I.1","I.2","R.1","R.2"), scenario.wane.list[[i]]$scenario))
-#   ggsave(paste0("./output/figures/", gsub(scenario.wane.list[[i]]$scenario.wane,pattern = "[.]", replacement = ""),".png"))
-#   gc()  
-# }
 
 plot.output.grid(rbind(cbind(output.layer.wane[[1]],scenario = pars.layer.wane[[1]]$scenario),
                        cbind(output.layer.wane[[2]],scenario = pars.layer.wane[[2]]$scenario),
@@ -892,33 +823,10 @@ ggplot(data = surveillance.layer.wane%>%
 
 ggsave("./output/figures/scenarios_layer.wane_surveillance.png")
 
-dists <- data.frame(shape =c(), rate =c(), scenario =c(), detection.method =c())
-for(method in c("pas.det.time", "min.det.time")){
-  for(its in unique(surveillance.layer.wane$scenario))  {
-    #for passive detection only use first repetition otherwise the data is inflated
-    x = surveillance.layer.wane%>%
-      filter(rep == 1)%>%
-      filter(scenario == its)%>%dplyr::select(method)
-    x <- x %>%filter(x[,method] != Inf)
-    
-    if(length(x[,method])>1)
-    {
-      fit.gamma <- fitdistrplus::fitdist(data = x[,method], distr = "gamma", method = "mle")
-      sgamma <-summary(fit.gamma)
-      dists<- rbind(dists,c(shape = as.numeric(sgamma$estimate[1]),rate = as.numeric(sgamma$estimate[2]), scenario = its, pdetect = length(x[,method])/10,detection.method = method))
-      
-    }else dists <- rbind(dists,c(shape =c(0), rate =c(10^-5), scenario = its, pdetect = length(x[,method])/10,detection.method = method))
-  }
-}
-names(dists)<-c("shape","rate","scenario","pdetect","detection.method")
-dists$shape <- as.numeric(dists$shape)
-dists$rate <- as.numeric(dists$rate)
-dists$mean <- dists$shape/dists$rate
-dists$var <- dists$shape/dists$rate^2
-dists$vac <- 1-pgamma(rep(c(10^10, 0,50,100,200,300,400,500),2),shape = 36,rate = 0.07)
-dists
-saveRDS(dists, "./output/distsDetWane.rds")
+dists.wane <- fit.distribution(surveillance.layer.wane, added.vars = add.vars)
 
+saveRDS(dists.wane, "./output/distsDetWane.rds")
+dists.wane
 
 surveillance.layer.wane%>%reframe(.by = scenario, mean.pas = mean(pas.det.time),mean.ac = mean(ac.det.time))
 
@@ -967,37 +875,46 @@ ggplot(humanexposure.layer.wane) +
 ggsave("./output/figures/humanexposurelayer_wane.png", dpi = 300, scale = 1.23)
 
 
-fit <- lm(detection.exposure ~  scenario, 
-          data = humanexposure.layer.wane%>%filter(rep == 1 & detection.method=="pas.det.time"& is.finite(detection.time)))
-summary(fit)
-drop1(fit)
-predict(fit, newdata = data.frame(detection.time = 10))
+#distributions human exposure####
+dists.exposure.wane <- fit.distribution(humanexposure.layer.wane,
+                                   long.form = TRUE, 
+                                   long.var = "detection.exposure",
+                                   scale = 1000, 
+                                   added.vars = add.vars )
+saveRDS(dists.exposure.wane,"./output/distsExposureWaneDifStrain.RDS")
+dists.exposure.wane<- readRDS("./output/distsExposureWaneDifStrain.RDS")
 
-saveRDS(fit, file = "./output/exposurefitLayerVaccinWanePAS.RDS")
+
+fit.mean.exp.wane <- lm(mean ~  intro.time, data = dists.exposure.wane%>%filter(detection.method=="pas.det.time"&scenario != "layerSize32000Vac0"&intro.time > 300))
+          
+summary(fit.mean.exp.wane)
+drop1(fit.mean.exp.wane)
+
+ggplot()+
+  geom_point(aes(intro.time, mean),dists.exposure.wane%>%filter(detection.method=="pas.det.time"&scenario != "layerSize32000Vac0"&intro.time > 0))+
+  geom_line(aes(intro.time, val),color = "red", data.frame(intro.time=dists.exposure.wane%>%filter(detection.method=="pas.det.time"&scenario != "layerSize32000Vac0"&intro.time > 300)%>%select(intro.time), 
+                                                           val =predict(fit.mean.exp.wane ) ))
+
+saveRDS(fit.mean.exp.wane, file = "./output/exposurefitLayerVaccinWanePAS.RDS")
+fit.mean.exp.wane<-readRDS(file = "./output/exposurefitLayerVaccinWanePAS.RDS")
+
+fit.mean.exp.wane.min <- lm(mean ~  intro.time, data = dists.exposure.wane%>%filter(detection.method=="min.det.time"&scenario != "layerSize32000Vac0"&intro.time <= 300))
+
+summary(fit.mean.exp.wane.min)
+drop1(fit.mean.exp.wane.min)
+
+ggplot()+
+  geom_point(aes(intro.time, mean),dists.exposure.wane%>%filter(detection.method=="min.det.time"&scenario != "layerSize32000Vac0"&intro.time > 0))+
+  geom_line(aes(intro.time, val),color = "red", data.frame(intro.time=dists.exposure.wane%>%filter(detection.method=="min.det.time"&scenario != "layerSize32000Vac0"&intro.time > 0)%>%select(intro.time), 
+                                                           val =predict(fit.mean.exp.wane.min ) ))
 
 
-fit <- lm(log10(detection.exposure) ~ phigh, 
-          data = humanexposure.layer.wane%>%filter(detection.method=="min.det.time"))
-summary(fit)
-drop1(fit)
 saveRDS(humanexposure.layer.wane%>%reframe(.by = c(scenario,detection.method),
                                            mean = mean(detection.exposure)), file = "./output/MEANexposurefitLayerVaccinWane.RDS")
 saveRDS(fit, file = "./output/exposurefitLayerVaccinWaneMIN.RDS")
+readRDS(file = "./output/exposurefitLayerVaccinWaneMIN.RDS")
 
 
-# #only passive
-# humanexposure.layer.wane$scenario_level <- factor(humanexposure.layer.wane$scenario, levels = scenario.levels.label)
-# ggplot(humanexposure.layer.wane%>%filter(detection.method =="pas.det.time")) +
-#   geom_histogram(aes(ratio.det,after_stat(.05*density), fill = detection.method),binwidth = .05,alpha = 0.5,colour = "black",position = "identity")+
-#   scale_x_log10(breaks=c(0.0001,0.001,0.01,0.1,0,1))+
-#   xlab("Risk ratio of exposure \n (reference baseline)") + 
-#   ylab("Proportion")+
-#   geom_vline(xintercept = 1)+
-#   facet_grid(scenario_level~.,
-#              labeller = labeller(scenario_level = scenario.label))+
-#   ggtitle("Human exposure layers")+theme(legend.position = 'none')
-# ggsave("./output/figures/humanexposurelayer_wane_pas.png", dpi = 300, scale = 1.23)
-# 
 
 #average ratios
 humanexposure.layer.wane%>%reframe(.by = c(scenario,detection.method),
@@ -1009,7 +926,9 @@ humanexposure.layer.wane%>%reframe(.by = c(scenario,detection.method),
 )
 
 
-
+###################################################
+#Waning immunity - different strain        ####
+###################################################
 #Waning immunity for a different strain####
 #add the 32 000 animal farm without vaccination as baseline
 scenario.waneDifStrain.list <- list(list(scenario = "layerSize32000Vac0"),
@@ -1025,14 +944,6 @@ pars.layer.waneDifStrain <- lapply(c(1:length(scenario.waneDifStrain.list)),func
 pars.layer.waneDifStrain[[1]]$intro.time<-0
 
 
-#visualize ##
-# 
-# 
-# for(i in c(1:length(scenario.wane.list))){
-#   show(plot.output(output.layer.wane[[i]],c("I.1","I.2","R.1","R.2"), scenario.wane.list[[i]]$scenario))
-#   ggsave(paste0("./output/figures/", gsub(scenario.wane.list[[i]]$scenario.wane,pattern = "[.]", replacement = ""),".png"))
-#   gc()  
-# }
 
 plot.output.grid(rbind(cbind(output.layer.waneDifStrain[[1]],scenario = pars.layer.waneDifStrain[[1]]$scenario),
                        cbind(output.layer.waneDifStrain[[2]],scenario = pars.layer.waneDifStrain[[2]]$scenario),
@@ -1047,7 +958,7 @@ plot.output.grid(rbind(cbind(output.layer.waneDifStrain[[1]],scenario = pars.lay
 ggsave(file = "./output/figures/waningLayer.png", scale =1.23)
 
 
-#surveillance ###
+#surveillance ####
 reps <- 100;
 
 rm(surveillance.layer.waneDifStrain)
@@ -1098,56 +1009,81 @@ ggsave("./output/figures/scenarios_layer.waneDifStrain_surveillance.png")
 scenario.names<- surveillance.layer.waneDifStrain%>%select(scenario, introTime)%>%unique
 phigh <- (1-pgamma(scenario.names$introTime,36,0.07))
 phigh[1] <- 0 #baseline
-add.vars <- list(phigh= as.list(setNames( phigh,scenario.names$scenario)))
+add.vars <- list(phigh= as.list(setNames( phigh,scenario.names$scenario)),
+                 intro.time = as.list(setNames(c(0,0,50,100,200,300,400,500),scenario.names$scenario)))
 
 dists.wane.ds <- fit.distribution(surveillance.layer.waneDifStrain, added.vars = add.vars)
   
-saveRDS(dists.wane.ds, "./output/distsDetwaneDifStrain.rds")
+saveRDS(dists.wane.ds, "./output/detDist_waneds.RDS")
+dists.wane.ds <- readRDS("./output/detDist_waneds.RDS")
 
-
-saveRDS(dists.wane.ds, "./output/detDist_sizevac.RDS")
-dists.wane.ds <- readRDS("./output/detDist_sizevac.RDS")
-
-fit.pas.mean.wane.ds<-stats::lm(mean ~ phigh^2, data = dists.wane.ds%>%filter(detection.method=="pas.det.time"& mean >0))
+fit.pas.mean.wane.ds<-stats::lm(mean ~ 0+phigh^150,offset = rep(9, nrow(dists.wane.ds%>%filter(detection.method=="pas.det.time"& mean >0))),  data = dists.wane.ds%>%filter(detection.method=="pas.det.time"& mean >0))
 drop1(fit.pas.mean.wane.ds)
 summary(fit.pas.mean.wane.ds)
 ggplot()+
-  geom_point(aes( phigh^2, mean),dists.wane.ds%>%filter(detection.method == "pas.det.time"& mean >0))+
-  geom_point(aes( phigh^2, val),color = "red", data.frame(vac =dists.wane.ds%>%filter(detection.method == "pas.det.time"& mean >0)%>%select("phigh"), val =predict(fit.pas.mean.wane.ds) ))
+  geom_point(aes(phigh, mean),dists.wane.ds%>%filter(detection.method == "pas.det.time"& mean >0 & mean <20))+
+  geom_point(aes(phigh, val),color = "red", data.frame(vac =dists.wane.ds%>%filter(detection.method == "pas.det.time"& mean >0)%>%select("phigh"), val =predict(fit.pas.mean.wane.ds) ))+
+  geom_line(aes(phigh, phigh.1),color = "blue", data= data.frame(vac = c(dists.wane.ds%>%filter(detection.method == "pas.det.time"& mean >0)%>%select("phigh")), 
+                                                        val = c(9+(42-9)*(dists.wane.ds%>%filter(detection.method == "pas.det.time"& mean >0)%>%select("phigh"))^500)) )
 
-#TOT HIER GEJOMEN#
-fit.pas.mean.wane.ds<-stats::lm(mean ~vac , data = dists.wane.ds%>%filter(detection.method=="pas.det.time"& mean >0))
+
+ggplot()+
+  geom_point(aes(intro.time, mean),dists.wane.ds%>%filter(detection.method == "pas.det.time" & scenario != "layerSize32000Vac0" ))#+
+  #geom_point(aes(intro.time, val),color = "red", data.frame(vac =dists.wane.ds%>%filter(detection.method == "pas.det.time"& mean >0)%>%select("phigh"), val =predict(fit.pas.mean.wane.ds) ))#+
+#  geom_line(aes(intro.time, phigh.1),color = "blue", data= data.frame(vac = c(dists.wane.ds%>%filter(detection.method == "pas.det.time"& mean >0)%>%select("phigh")), 
+ #                                                                     val = c(9+(42-9)*(dists.wane.ds%>%filter(detection.method == "pas.det.time"& mean >0)%>%select("phigh"))^500)) )         
+
+fit.pas.mean.wane.ds<-stats::lm(log10(mean) ~ intro.time,  
+                                data = dists.wane.ds%>%filter(detection.method=="pas.det.time"& intro.time >50))
+  
 drop1(fit.pas.mean.wane.ds)
 summary(fit.pas.mean.wane.ds)
+
+ggplot()+
+  geom_point(aes(intro.time, mean),dists.wane.ds%>%filter(detection.method == "pas.det.time" &  intro.time >50 ))+
+  geom_line(aes(intro.time, 10^val),color = "red", data.frame(vac =dists.wane.ds%>%filter(detection.method == "pas.det.time"& intro.time >50)%>%select("intro.time"), 
+                                                                  val =predict(fit.pas.mean.wane.ds) ))
 saveRDS(fit.pas.mean.wane.ds, "./output/detMean_wane.ds_passive.RDS")
 
-fit.pas.sd.wane.ds<-stats::lm(sqrt(var) ~vac + size, data = dists.wane.ds%>%filter(detection.method=="pas.det.time"& var >0))
-drop1(fit.sd.wane.ds)
-summary(fit.sd.wane.ds)
 
-fit.sd.wane.ds<-stats::lm(sqrt(var) ~vac , data = dists.wane.ds%>%filter(detection.method=="pas.det.time"& var >0))
-drop1(fit.sd.wane.ds)
-summary(fit.sd.wane.ds)
-saveRDS(fit.pas.wane.ds, "./output/detSD_wane.ds_passive.RDS")
+fit.pas.sd.wane.ds<-stats::lm(sqrt(var) ~intro.time, data = dists.wane.ds%>%filter(detection.method=="pas.det.time"& var >0))
+drop1(fit.pas.sd.wane.ds)
+summary(fit.pas.sd.wane.ds)
 
+ggplot()+
+  geom_point(aes(intro.time, sqrt(var)),dists.wane.ds%>%filter(detection.method == "pas.det.time" & intro.time >50 ))+
+  geom_line(aes(intro.time, val),color = "red", data.frame(vac =dists.wane.ds%>%filter(detection.method == "pas.det.time"& intro.time >50)%>%select("intro.time"), 
+                                                              val =predict(fit.pas.sd.wane.ds) ))
 
-fit.min.mean.wane.ds<-stats::lm(mean ~vac + size, data = dists.wane.ds%>%filter(detection.method=="min.det.time"& mean >0))
+drop1(fit.pas.sd.wane.ds)
+summary(fit.pas.sd.wane.ds)
+saveRDS(fit.pas.sd.wane.ds, "./output/detSD_wane.ds_passive.RDS")
+
+fit.min.mean.wane.ds<-stats::lm(mean ~ intro.time,  
+                                data = dists.wane.ds%>%filter(detection.method=="min.det.time"& intro.time >50))
+
 drop1(fit.min.mean.wane.ds)
 summary(fit.min.mean.wane.ds)
 
-fit.min.mean.wane.ds<-stats::lm(mean ~vac , data = dists.wane.ds%>%filter(detection.method=="min.det.time"& mean >0))
-drop1(fit.min.mean.wane.ds)
-summary(fit.min.mean.wane.ds)
+ggplot()+
+  geom_point(aes(intro.time,mean),dists.wane.ds%>%filter(detection.method == "min.det.time" &  intro.time >50 ))+
+  geom_line(aes(intro.time, val),color = "red", data.frame(vac =dists.wane.ds%>%filter(detection.method == "min.det.time"& intro.time >50)%>%select("intro.time"), 
+                                                              val =predict(fit.min.mean.wane.ds) ))
 saveRDS(fit.min.mean.wane.ds, "./output/detMean_wane.ds_minimum.RDS")
 
-fit.min.sd.wane.ds<-stats::lm(sqrt(var) ~vac + size, data = dists.wane.ds%>%filter(detection.method=="min.det.time"& var >0))
+
+fit.min.sd.wane.ds<-stats::lm(sqrt(var) ~intro.time, data = dists.wane.ds%>%filter(detection.method=="min.det.time"& intro.time >50))
 drop1(fit.min.sd.wane.ds)
 summary(fit.min.sd.wane.ds)
 
-fit.sd.wane.ds<-stats::lm(sqrt(var) ~vac , data = dists.wane.ds%>%filter(detection.method=="min.det.time"& var >0))
-drop1(fit.sd.wane.ds)
-summary(fit.sd.wane.ds)
-saveRDS(fit.sd.wane.ds, "./output/detSD_wane.ds_minimum.RDS")
+ggplot()+
+  geom_point(aes(intro.time, sqrt(var)),dists.wane.ds%>%filter(detection.method == "min.det.time" & intro.time >50 ))+
+  geom_line(aes(intro.time, val),color = "red", data.frame(vac =dists.wane.ds%>%filter(detection.method == "min.det.time"& intro.time >50)%>%select("intro.time"), 
+                                                           val =predict(fit.min.sd.wane.ds) ))
+
+drop1(fit.min.sd.wane.ds)
+summary(fit.min.sd.wane.ds)
+saveRDS(fit.min.sd.wane.ds, "./output/detSD_wane.ds_minimum.RDS")
 
 
 
@@ -1203,52 +1139,64 @@ ggplot(humanexposure.layer.waneDifStrain%>%filter(detection.method =="min.det.ti
   geom_point(aes(x = detection.time, y =log10(detection.exposure), colour = scenario ))+facet_grid(scenario~., scales = "free")
   
   
-
-dists.exposure <- NULL;
-for(method in c("pas.det.time","ac.det.time", "min.det.time")){
-  for(its in unique(humanexposure.layer.waneDifStrain$scenario))  {
-    #for passive detection only use first repetition otherwise the data is inflated
-    x = humanexposure.layer.waneDifStrain%>%
-      filter(rep == 1)%>%
-      filter(scenario == its)%>%dplyr::select("detection.exposure", "detection.method")
-    x <- x %>%filter(detection.exposure != Inf)
-    
-    if(length(x[x$detection.method ==method,])>1)
-    {div.factor <-100#prevent numerical problems
-      fit.gamma <- fitdistrplus::fitdist(data = x[x$detection.method ==method,]$detection.exposure/div.factor, distr = "gamma", method = "mle")
-      sgamma <-summary(fit.gamma)
-      dists.exposure<- rbind(dists.exposure,data.frame(shape = as.numeric(sgamma$estimate[1]),rate = as.numeric(sgamma$estimate[2])/div.factor, scenario = its, pdetect = length(x[x$detection.method ==method,]$detection.exposure)/10,detection.method = method))
-      
-    }else dists.exposure <- rbind(dists.exposure,data.frame(shape =c(0), rate =c(10^-5), scenario = its, pdetect = length(x[x$detection.method ==method,]$detection.exposure)/10,detection.method = method))
-  }
-}
-names(dists.exposure)<-c("shape","rate","scenario","pdetect","detection.method")
-dists.exposure$shape <- as.numeric(dists.exposure$shape)
-dists.exposure$rate <- as.numeric(dists.exposure$rate)
-dists.exposure$mean <- dists.exposure$shape/dists.exposure$rate
-dists.exposure$var <- dists.exposure$shape/dists.exposure$rate^2
-dists.exposure$vac <- 1-pgamma(rep(c(10^10, 0,50,100,200,300,400,500),3),shape = 36,rate = 0.07)
-dists.exposure
+#distributions human exposure####
+dists.exposure <- fit.distribution(humanexposure.layer.waneDifStrain,
+                                    long.form = TRUE, 
+                                    long.var = "detection.exposure",
+                                    scale = 1000, 
+                                    added.vars = add.vars )
 saveRDS(dists.exposure,"./output/distsExposureWaneDifStrain.RDS")
-fit <- lm(detection.exposure ~  detection.time +fade.out, 
-          data = humanexposure.layer.waneDifStrain%>%filter(rep == 1 & detection.method=="pas.det.time"& is.finite(detection.time)))
-summary(fit)
-drop1(fit)
-predict(fit, newdata = data.frame(fade.out = T, detection.time = 10))
+dists.exposure<- readRDS("./output/distsExposureWaneDifStrain.RDS")
 
-saveRDS(fit, file = "./output/exposurefitLayerVaccinwaneDifStrainPAS.RDS")
+fit.pas.exp.mean.wane.ds <- lm(log10(mean) ~  intro.time,
+          data = dists.exposure%>%filter(detection.method=="pas.det.time"&scenario != "layerSize32000Vac0"))
+summary(fit.pas.exp.mean.wane.ds )
+drop1(fit.pas.exp.mean.wane.ds )
+ggplot()+
+  geom_point(aes(intro.time, mean),dists.exposure%>%filter(detection.method=="pas.det.time"&scenario != "layerSize32000Vac0"))+
+  geom_line(aes(intro.time, 10^(val)),color = "red", data.frame(intro.time=dists.exposure%>%filter(detection.method=="pas.det.time"&scenario != "layerSize32000Vac0")%>%select(intro.time), 
+                                                           val =predict(fit.pas.exp.mean.wane.ds ) ))
+saveRDS(fit.pas.exp.mean.wane.ds , file = "./output/exposurefitLayerVaccinwaneDifStrainPAS.RDS")
+fit.pas.exp.mean.wane.ds <- readRDS(file = "./output/exposurefitLayerVaccinwaneDifStrainPAS.RDS")
+
+fit.pas.exp.var.wane.ds <- lm(sqrt(var) ~  intro.time,
+                               data = dists.exposure%>%filter(detection.method=="pas.det.time"&scenario != "layerSize32000Vac0"))
+summary(fit.pas.exp.var.wane.ds )
+drop1(fit.pas.exp.var.wane.ds )
+ggplot()+
+  geom_point(aes(intro.time, sqrt(var)),dists.exposure%>%filter(detection.method=="pas.det.time"&scenario != "layerSize32000Vac0"))+
+  geom_line(aes(intro.time, val),color = "red", data.frame(intro.time=dists.exposure%>%filter(detection.method=="pas.det.time"&scenario != "layerSize32000Vac0")%>%select(intro.time), 
+                                                                val =predict(fit.pas.exp.var.wane.ds ) ))
+saveRDS(fit.pas.exp.var.wane.ds, file = "./output/exposurefitLayerVaccinwaneDifStrainSDPAS.RDS")
+fit.pas.exp.var.wane.ds<- readRDS(file = "./output/exposurefitLayerVaccinwaneDifStrainSDPAS.RDS")
+
+fit.min.exp.mean.wane.ds <- lm(mean ~  intro.time,
+                               data = dists.exposure%>%filter(detection.method=="min.det.time"&scenario != "layerSize32000Vac0" &intro.time > 50))
+summary(fit.min.exp.mean.wane.ds )
+drop1(fit.min.exp.mean.wane.ds )
+ggplot()+
+  geom_point(aes(intro.time, mean),dists.exposure%>%filter(detection.method=="min.det.time"&scenario != "layerSize32000Vac0"&intro.time > 50))+
+  geom_line(aes(intro.time, val),color = "red", data.frame(intro.time=dists.exposure%>%filter(detection.method=="min.det.time"&scenario != "layerSize32000Vac0"&intro.time > 50)%>%select(intro.time), 
+                                                                val =predict(fit.min.exp.mean.wane.ds ) ))
+saveRDS(fit.min.exp.mean.wane.ds, file = "./output/exposurefitLayerVaccinwaneDifStrainmin.RDS")
 
 
-fit <- lm(detection.exposure ~ factor(phigh<0.9) +detection.time, 
-          data = humanexposure.layer.waneDifStrain%>%filter(detection.method=="min.det.time"))
-summary(fit)
-drop1(fit)
-saveRDS(humanexposure.layer.waneDifStrain%>%reframe(.by = c(scenario,detection.method),
-                                           mean = mean(detection.exposure)), file = "./output/MEANexposurefitLayerVaccinwaneDifStrain.RDS")
-saveRDS(fit, file = "./output/exposurefitLayerVaccinwaneDifStrainMIN.RDS")
+fit.min.exp.var.wane.ds <- lm(sqrt(var) ~  intro.time,
+                              data = dists.exposure%>%filter(detection.method=="min.det.time"&scenario != "layerSize32000Vac0"&intro.time > 50))
+summary(fit.min.exp.var.wane.ds )
+drop1(fit.min.exp.var.wane.ds )
+ggplot()+
+  geom_point(aes(intro.time, sqrt(var)),dists.exposure%>%filter(detection.method=="min.det.time"&scenario != "layerSize32000Vac0"&intro.time > 50))+
+  geom_line(aes(intro.time, val),color = "red", data.frame(intro.time=dists.exposure%>%filter(detection.method=="min.det.time"&scenario != "layerSize32000Vac0"&intro.time > 50)%>%select(intro.time), 
+                                                                val =predict(fit.min.exp.var.wane.ds ) ))
+saveRDS(fit.min.exp.var.wane.ds, file = "./output/exposurefitLayerVaccinwaneDifStrainSDmin.RDS")
 
 
-# #only passive
+
+
+
+
+
 
 
 #average ratios

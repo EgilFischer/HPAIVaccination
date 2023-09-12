@@ -37,18 +37,29 @@ numsim <-max.runs
 totpoints <- nrow(spatial.input)
 Q_init_matrix <- matrix(0,nrow=numsim,ncol=totpoints)
 F_matrix <- matrix(0,nrow=numsim,ncol=totpoints) #determine fade-out or culling
+Intro_matrix<- matrix(0,nrow=numsim,ncol=totpoints) #determine moment of introduction during production cycle
 T_inf_matrix <- matrix(0,nrow=numsim,ncol=totpoints)
 V_stat_matrix <- matrix(0,nrow=numsim,ncol=totpoints)
 P_maj_matrix <- matrix(0,nrow=numsim,ncol=totpoints)
 
 for (ii in c(1:numsim)){
   Q_init_matrix[ii,] <- rexp(totpoints, rate = 1)
+  
+  #introduction time 
+  Intro_matrix[ii,]<- sapply(spatial.input$TYPE, intro_func)
   #vaccination status
-  V_stat_matrix[ii,]<- sapply(spatial.input$TYPE,vac.func)
+  V_stat_matrix[ii,]<- mapply(vac.func,spatial.input$TYPE,Intro_matrix[ii,])
   #fade out or culling
   F_matrix[ii,] <- sapply(V_stat_matrix[ii,], fadeout_func)
+ 
+  
   #infectious period is determined by the vaccination status and fade-out or culling
-  T_inf_matrix[ii,] <- mapply(Tdist, vacstat = V_stat_matrix[ii,], type = spatial.input$TYPE, fadeout = F_matrix[ii,])
+  T_inf_matrix[ii,] <- mapply(Tdist, 
+                              vacstat = V_stat_matrix[ii,], 
+                              size = spatial.input$SIZE,
+                              type = spatial.input$TYPE, 
+                              fadeout = F_matrix[ii,],
+                              intro.time = Intro_matrix[ii,])
   #probability of major outbreak
   P_maj_matrix[ii,] <- sapply( V_stat_matrix[ii,], function(p){round(pmajor(param.list.baseline.layer, p,10)$pmajor,10)})
 }

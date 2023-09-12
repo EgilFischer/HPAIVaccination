@@ -9,6 +9,7 @@
 #########################################################
 source("./src/loadLibraries.R")
 source("./src/probMajorOutbreak.R")
+source("./src/FittedWithinFarm.R")
 
 #load location data ####
 spatial.input<- read_excel("./input/20230404_AI_AnimalLocations_SizeType_v02.xlsx", sheet = 2)
@@ -47,26 +48,11 @@ param.list.baseline.layer <- list(
   mortRate = 0.0005/7 #per capita death rate #Mortality events - based on performance reports and pers. com. mieke matthijs 0.5% per week +Gonzales & elbers figure 1 
 )
 
-#function to set the infectious period distribution depending on the vaccination status
-#load fitted distributions
-rate.fit <- readRDS("./output/pasdetRate_pasdet.RDS")
-rate.function <- function(vac){with(rate.fit,
-                                    coefficients[1]+coefficients[2]*vac*100 + coefficients[3]*(vac*100)^2 +coefficients[4]*(vac*100)^3 )}
-
-shape.fit <- readRDS("./output/pasdetShape_pasdet.RDS")
-shape.function <- function(vac){with(shape.fit,
-                                     coefficients[1]+coefficients[2]*vac*100 + coefficients[3]*(vac*100)^2 +coefficients[4]*(vac*100)^3 )}
-
-#function to set the infectious period distribution depending on the vaccination status
-Tdist = function(vacstat,type,fadeout){
-  shape = shape.function(vacstat);
-  rate = rate.function(vacstat);
-  return(rgamma(1, shape= shape, rate = rate))
-}
-
-#generic fade out function always return 0
-fadeout_func = function(vacstat){
-  return(0);
+#generic function for the introduction time which will affect the vaccination
+intro_func<- function(type){
+  if(type == "LAYER") return(runif(1,min = 0, max =17*30))
+  if(type == "BROILER") return(runif(1,min = 0, max =42))
+  else return(runif(1, min =0, max = 17*30))#assume duck and turkey same as LAYER
 }
 
 
@@ -75,11 +61,11 @@ set.seed(23011977)
 spatial.input$density1KM <- pointdensity(spatial.input[,c("Xkm","Ykm")], eps = 1) 
 
 hpda <- sample(c(spatial.input%>%
-                   filter(spatial.input$density1KM>= quantile(spatial.input$density1KM,0.95))%>%select("nr"))$nr, 100, replace = TRUE)
+                   filter(spatial.input$density1KM>= quantile(spatial.input$density1KM,0.95))%>%select("host_id"))$host_id, 100, replace = TRUE)
 #spatial.input%>%filter(nr %in% hpda)
 
 lpda <- sample(c(spatial.input%>%
-                   filter(spatial.input$density1KM<= quantile(spatial.input$density1KM,0.25))%>%select("nr"))$nr, 100, replace = TRUE)
+                   filter(spatial.input$density1KM<= quantile(spatial.input$density1KM,0.25))%>%select("host_id"))$host_id, 100, replace = TRUE)
 #spatial.input%>%filter(nr %in% lpda)
 
 
@@ -89,14 +75,18 @@ lpda <- sample(c(spatial.input%>%
 ######################################################
 index.farm <- hpda
 max.runs <- length(index.farm)
-
+####################
 #no vaccination ####
+####################
 #set functions ####
-vac.func <- function(vac,type){0}
-set.seed(23011977)
+vac.func <- function(type, intro){0}
+Tdist = Tdist.novac.pas
+fadeout_func = fadeout_func.novac.pas
+exposure.function <- exposure.function.novac.pas
 
 #run the simulations ####
 srm <- Sys.time()
+set.seed(23011977)
 source("./src/SpatialSellkeModel_init_simuls.R")
 #run the model
 source("./src/SpatialSellkeModel_main.R")
@@ -139,27 +129,29 @@ infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
                                                 Tinf = diff(Event_time),
                                                 Culled = max(Type_event)==4,
                                                 Infected = min(Type_event)==2)
-#add vaccination status, farn type and size 
+#add vaccination status, farm type and size 
 inf.vac.novaccin<- left_join(infectious.periods,joined.vacstatus,by = c("host_id","run"))
 
 #determine the exposure ###
-exposure.novaccin.fit <- readRDS(file = "./output/exposurefitLayerPas.RDS")
+inf.vac.novaccin$exposure <-exposure.function(inf.vac.novaccin)
 
-
-inf.vac.novaccin$exposure <- c(predict(exposure.novaccin.fit, 
-                                       newdata =data.frame(size = inf.vac.novaccin$SIZE, detection.time =inf.vac.novaccin$Tinf , vaccination = c(0.0))))
 inf.vac.novaccin$exposure[inf.vac.novaccin$exposure<0]<-500
 exposure.novaccin.tot <- inf.vac.novaccin%>%reframe(.by = run,
                            tot.exposure = sum(exposure))
 
 mean.exposure.novaccin <- mean(exposure.novaccin.tot$tot.exposure)
+#############################################################################################
+#50% high titre -> exposure per farm is slightly less, but detection times are increased ####
+#############################################################################################
+#set functions ####
+vac.func <- function(type, intro){ifelse(type == "LAYER",0.5,0)}
+Tdist = Tdist.vac.pas
+fadeout_func = fadeout_func.vac.pas
+exposure.function <- exposure.function.vac.pas
 
-#60% high titre -> exposure per farm is slightly less, but detection times are increased ####
-set.seed(23011977)
+#run simulations ####
 srm <- Sys.time()
-#change the vaccination function
-vac.func <- function(type){ifelse(type == "LAYER",0.6,0)}
-
+set.seed(23011977)
 source("./src/SpatialSellkeModel_init_simuls.R")
 #run the model
 source("./src/SpatialSellkeModel_main.R")
@@ -196,33 +188,21 @@ infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
 inf.vac.60vac<- left_join(infectious.periods,joined.vacstatus,by = c("host_id","run"))
 
 #determine exposure ####
-exposure.vaccin.fit <- readRDS( file = "./output/exposurefitLayerPasVaccin.RDS")
-exposure.function.60vac <- function(size, vac){if(vac == 0)
-{max(0,predict(exposure.novaccin.fit, newdata =data.frame(size = size)))}
-  else{max(0,predict(exposure.vaccin.fit, newdata =data.frame(size = size, vaccination =vac)))}}
 
-inf.vac.60vac$exposure <- mapply(exposure.function.60vac, inf.vac.60vac$SIZE, inf.vac.60vac$vac)
+inf.vac.60vac$exposure <- exposure.function(inf.vac.60vac)
 exposure.60vaccin.tot <- inf.vac.60vac%>%reframe(.by = run,
                                                     tot.exposure = sum(exposure))
 
+##################################################################################################################
 #Clinical protection Vaccination has 50% high titre with reduced transmission rate and 50% death of low titre birds ####
-rate.fit <- readRDS( "./output/pasdetRate_clinprot.RDS")
-shape.fit <- readRDS( "./output/pasdetShape_clinprot.RDS")
+#################################################################################################################
+#set functions ####
+vac.func <- function(type, intro){ifelse(type == "LAYER",0.5,0)}
+Tdist = Tdist.clinprot.pas
+fadeout_func = fadeout_func.clinprot.pas
+exposure.function <- exposure.function.clinprot.pas
 
-Tdist = function(vacstat,type,fadeout){
-  if(vacstat==0)
-  {
-    shape = shape.fit[1,2]
-    rate = rate.fit[1,2]
-  }else {
-    #select scenario 3 = 50% clinical protection but no protection against transmission
-    shape = shape.fit[3,2]
-    rate = rate.fit[3,2]
-  }
-    return(rgamma(1, shape= shape, rate = rate))
-}
-
-#sims
+#sims###
 srm <- Sys.time()
 vac.func <- function(x){ifelse(x == "LAYER",10^-6 #does not effect pmajor but changes the infectious period
                                ,0)} 
@@ -259,50 +239,23 @@ infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
 
 inf.vac.clinprot<- left_join(infectious.periods,joined.vacstatus,by = c("host_id","run"))
 
-exposure.clinprot.fit <- readRDS( file = "./output/exposurefitLayerVaccinClinprot.RDS")
 
-inf.vac.clinprot$exposure<- predict(exposure.clinprot.fit, newdata = data.frame(detection.time =inf.vac.clinprot$Tinf))
+inf.vac.clinprot$exposure<- exposure.function(inf.vac.clinprot)
 exposure.clinprot.tot <- inf.vac.clinprot%>%reframe(.by = run,
                                                    tot.exposure = sum(exposure))
-# 
-# exposure.tot <- rbind(cbind(exposure.novaccin.tot, scenario = "Baseline"),
-#                        cbind(exposure.60vaccin.tot, scenario = "Reduced transmission"),
-#                        cbind(exposure.clinprot.tot, scenario = "Clinical protection"))
-# mean.exposure.novaccin <- mean(exposure.novaccin.tot$tot.exposure)
-# exposure.tot$ratio <- exposure.tot$tot.exposure/mean.exposure.novaccin
-# ggplot(exposure.tot)+
-#   geom_histogram(aes(x = ratio), fill = "red", alpha = 0.5)+
-#   geom_vline(aes(xintercept = 1))+
-#   facet_grid(.~scenario)
-# ggsave("./output/figures/spatialexposure.png")
-# exposure.tot%>%reframe(.by = scenario,
-#                        median = median(ratio),
-#                        low = quantile(ratio,.25),
-#                        high = quantile(ratio,.75),
-#                        above1 = sum(ratio>1)/100   )
 
 
+######################################
+#Waning of immunity - homologuous ####
+######################################
+#set functions ####
+vac.func <- function(type, intro){ifelse(type == "LAYER",
+                                         1-pgamma(intro,36,0.07),0)}
+Tdist = Tdist.wane.pas
+fadeout_func = fadeout_func.wane.pas
+exposure.function <- exposure.function.wane.pas
 
-
-
-
-#Waning of immunity ####
-rate.fit <- readRDS( "./output/pasdetRate_pasdet.RDS")
-shape.fit <- readRDS( "./output/pasdetShape_pasdet.RDS")
-
-Tdist = function(vacstat,type,fadeout){
-  if(fadeout==1)return(5)
-  shape = shape.function(vacstat);
-  rate = rate.function(vacstat);
-  if(rate <=0|shape<=0 ) return(0);
-  return(rgamma(1, shape= shape, rate = rate))
-}
-
-fadeout_func = function(vacstat){
-  if(vacstat> 0.9999)return(1)else return(0)
-}
-
-
+#sims####
 srm <- Sys.time()
 vac.func <- function(type){ifelse(type == "LAYER",
                                   1-pgamma(runif(1,min = 0,max = 540), shape = 36,rate =0.07),
@@ -340,12 +293,75 @@ infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
 
 inf.vac.wane<- left_join(infectious.periods,joined.vacstatus,by = c("host_id","run"))
 
-exposure.wane.fit <- readRDS("C:/Surfdrive/Projecten/AI/LNVVaccinatie/HPAIVaccination/output/exposurefitLayerVaccinwaneDifStrainPAS.RDS")
 #no fit 
 
-inf.vac.wane$exposure<- predict(exposure.wane.fit, newdata = data.frame(detection.time =inf.vac.wane$Tinf,phigh = inf.vac.wane$vac))
+inf.vac.wane$exposure<- exposure.function(inf.vac.wane) 
 exposure.wane.tot <- inf.vac.wane%>%reframe(.by = run,
                                                     tot.exposure = sum(exposure))
+
+######################################
+#Waning of immunity - heterologuous ####
+######################################
+#set functions ####
+vac.func <- function(type, intro){ifelse(type == "LAYER",
+                                         0.7*(1-pgamma(intro, shape = 4,rate =0.1/7)),0)}
+Tdist = Tdist.vac.wane.ds.pas
+fadeout_func = fadeout_func.wane.ds.pas
+exposure.function <- exposure.function.wane.ds.pas
+
+#sims####
+srm <- Sys.time()
+
+source("./src/SpatialSellkeModel_init_simuls.R")
+#run the model
+source("./src/SpatialSellkeModel_main.R")
+#save output
+saveRDS(infected_over_time_runs, file = "./output/infected_over_time_runs_wane_hdpa.RDS")
+saveRDS(histories, file = "./output/histories_wane_hdpa.RDS")
+saveRDS(V_stat_matrix,file = "./output/V_stat_matrix_wane_hdpa.RDS")
+saveRDS(Intro_matrix, file = "./output/Intro_matrix_wane_hdpa.RDS")
+joined.histories <- NULL;joined.vacstatus<- NULL;joined.intro =NULL;
+for(it in c(1:length(histories))){
+  joined.histories<- rbind(joined.histories, cbind(histories[[it]], data.frame(run = it)))
+  joined.vacstatus <- rbind(joined.vacstatus,cbind(spatial.input$host_id,
+                                                   spatial.input$TYPE,spatial.input$SIZE, V_stat_matrix[it,], data.frame(run = it)))
+  joined.intro <- rbind(joined.intro,cbind(spatial.input$host_id,
+                                                   spatial.input$TYPE,spatial.input$SIZE, Intro_matrix[it,], data.frame(run = it)))
+}
+names(joined.vacstatus) <- c("host_id","TYPE","SIZE","vac","run")
+names(joined.intro)<- c("host_id","TYPE","SIZE","intro.time","run")
+saveRDS(joined.histories, file = "./output/joined_histories_wane_hdpa.RDS")
+saveRDS(joined.vacstatus,file = "./output/vacstatus_wane_hdpa.RDS")
+saveRDS(joined.intro,file = "./output/intro_wane_hdpa.RDS")
+Sys.time()-srm
+
+#read saved simulations ####
+infected_over_time_runs<-readRDS( file = "./output/infected_over_time_runs_wane_hdpa.RDS")
+histories<- readRDS(file = "./output/histories_wane_hdpa.RDS")
+V_stat_matrix<- readRDS(file = "./output/V_stat_matrix_wane_hdpa.RDS")
+joined.histories<- readRDS( file = "./output/joined_histories_wane_hdpa.RDS")
+joined.vacstatus <- readRDS(file = "./output/vacstatus_wane_hdpa.RDS")
+joined.intro<- readRDS(file = "./output/intro_wane_hdpa.RDS")
+
+
+#length of infectious periods and exposure###
+infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
+                                                Tinf = diff(Event_time),
+                                                Culled = max(Type_event)==4,
+                                                Infected = min(Type_event)==2)
+
+inf.vac.wane<- left_join(infectious.periods,joined.vacstatus[,  c("host_id","run","vac")], by = c("host_id","run"))
+inf.vac.wane<- left_join(inf.vac.wane, joined.intro[,  c("host_id","run","intro.time")], by = c("host_id","run"))
+inf.vac.wane<- left_join(inf.vac.wane,spatial.input[,c("host_id","TYPE","SIZE")], by = c("host_id"))
+                  
+#no fit 
+
+inf.vac.wane$exposure<- exposure.function(inf.vac.wane) 
+#replace negative numbers
+inf.vac.wane$exposure[inf.vac.wane$exposure<100]<- 100
+exposure.wane.tot <- inf.vac.wane%>%reframe(.by = run,
+                                            tot.exposure = sum(exposure))
+
 
 ############################################################
 # Combine SCENARIOS                                        #
@@ -433,7 +449,9 @@ ggplot(exposure.by.run, aes(ratio))+
 ggsave("./output/figures/ExposureSpatial.png", scale = 1.23)
 
 
-
+###################################################
+#         LPDA                                    #
+###################################################
 
 
 
@@ -824,7 +842,11 @@ ggsave("./output/figures/ExposureSpatialLPDA.png", scale = 1.23)
 
 
 
-#Spatial plotting####
+
+
+############################################
+#Spatial plotting                       ####
+############################################
 require(sf)
 netherlands.contours <- st_read( "./input/Nederland/Nederland")
 plot(st_geometry(netherlands.contours))
