@@ -91,61 +91,6 @@ q1q2plot <- ggplot(data =q1q2.baseline.layer)+
 ggsave("./output/figures/probMinorOutbreakLayer.png" ,q1q2plot, scale = 1.23)
 
 
-#surveillance ####
-reps <- 100;
-system.time(surveillance.layer.baseline <- cbind(repeat.detection.time.surveillance(output.baseline.layer,
-                                                                        reps = reps,
-                                                                        deaths.vars  = c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-                                                                        time.interval.pas = 1,
-                                                                        threshold = 0.005*pars.baseline.layer$N0,
-                                                                        ints = 2,
-                                                                        detectables.vars = c("DI.1","DI.2","DR.1","DR.2"),
-                                                                        se = 0.99,
-                                                                        time.interval.ac =7,
-                                                                        init.ac ="rand",
-                                                                        detectables.incidence = TRUE,
-                                                                        pfarm = 1., 
-                                                                        panimal = 1.),
-                                     scenario = pars.baseline.layer$scenario))
-
-
-
-# surveillance.broiler.baseline <- cbind(repeat.detection.time.surveillance(output.baseline.broiler,
-#                                                                         reps = reps,
-#                                                                         deaths.vars  = c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
-#                                                                         time.interval.pas = 1,
-#                                                                         threshold = 0.005*pars.baseline.broiler$N0,
-#                                                                         ints = 2,
-#                                                                         detectables.vars = c("DI.1","DI.2","DR.1","DR.2"),
-#                                                                         se = 0.99,
-#                                                                         time.interval.ac =7,
-#                                                                         init.ac ="rand",
-#                                                                         detectables.incidence = TRUE,
-#                                                                         pfarm = 1., 
-#                                                                         panimal = 1.),
-#                                      scenario = pars.baseline.broiler$scenario)
-
-ggplot(data = surveillance.layer.baseline)+
-  geom_histogram(aes(x = pas.det.time, y=..count../sum(..count..), fill ="Passive"), colour = "black",
-                 alpha = 0.5, binwidth = 1.0)+
-  geom_histogram(aes(ac.det.time, y=..count../sum(..count..),fill = "Active"), colour = "black", 
-                 alpha = 0.5, binwidth = 1.0)+
-  geom_density(aes(min.det.time,after_stat(..density..), colour = "Minimum"),
-               linewidth = 1.0,
-               bw = 1)+
-  xlim(0,15)+ylim(0,NA)+
-  xlab("Detection time")+
-  ylab("Proportion of runs")+
-  scale_fill_manual("Detection method",values = c("Passive" = "grey","Active"= "orange"))+
-  scale_colour_manual("", values = c("Minimum" = "red"))+
-  ggtitle("Active and passive surveillance Layers")
-ggsave("./output/figures/baseline_layer_surveillance.png")
-
-
-
-
-
-
 
 ##########################################
 #Layer and Broiler different sizes       #
@@ -225,7 +170,7 @@ ggplot(data = surveillance.size.type%>%
                     labels = c(pas.det.time = "Passive",ac.det.time = "Active",min.det.time= "Minimum"), name = "Detection")+
   xlab("Detection time")+
   ylab("Proportion of runs")+
-  ggtitle("Surveillance")+
+  #ggtitle("Surveillance")+
   facet_grid(size~max.time+variable, labeller = labeller(max.time = labels.type, variable = detection.method.label))
 ggsave("./output/figures/scenarios_sizetype_surveillance.png", scale = 1.23)
 
@@ -288,6 +233,7 @@ for(k in c(1:length(output.size.type))){
 }
 saveRDS(humanexposure.size.type, "./output/exposure_sizetype.RDS")
 humanexposure.size.type<- readRDS( "./output/exposure_sizetype.RDS")
+
 dists.exposure <- fit.distribution(humanexposure.size.type, long.form = TRUE, scale = 1000,  added.vars = add.vars)
 ggplot(dists.exposure)+geom_point(aes(size, mean, colour = detection.method))+facet_grid(type~.)
 saveRDS(dists.exposure, "./output/exposureDist_sizetype.RDS")
@@ -342,13 +288,15 @@ pars.layer <- lapply(c(1:length(scenario.list.size.vaccination)),function(i){loa
 #plot the baseline size####
 plot.data <- NULL;
 for(j in c(1:length(scenario.list.size.vaccination))){
-  plot.data<- rbind(plot.data,cbind(data.frame(output.layer[[j]]),scenario = scenario.list.size.vaccination[[j]]$scenario))
+  plot.data<- rbind(plot.data,cbind(data.frame(output.layer[[j]]),
+                                    scenario = scenario.list.size.vaccination[[j]]$scenario))
 }
 plot.data$size <- (plot.data$scenario%>%gsub(pattern = "layerSize", replacement = "")%>%str_split(pattern= c("Vac"))%>%unlist%>%matrix(nrow =  2))[1,]
 plot.data$vac <- (plot.data$scenario%>%gsub(pattern = "layerSize", replacement = "")%>%str_split(pattern= c("Vac"))%>%unlist%>%matrix(nrow =  2))[2,]
 sel.plot.data <- plot.data%>%select(c("time","run","scenario","size","vac","I.1","I.2","R.1","R.2","DR.1","DR.2"))%>%reshape2::melt(id.vars = c("time","run","scenario","size","vac"))
 sel.plot.data <- (data.frame(sel.plot.data)%>%group_by(scenario)%>%sample_n(ceiling(0.05*length(time))))%>%ungroup
-ggplot(sel.plot.data)+
+
+ggplot(sel.plot.data%>%filter(size == 32000))+
   geom_step(aes(x = time, y = value, colour = variable, group = run))+
   labs(x = "Time", y = "Number of birds")+
   facet_grid(vac~variable,labeller = labeller(variable = itype.labels) , scales= c("free_y"))
@@ -401,7 +349,7 @@ ggplot(data = surveillance.layer%>%
                     labels = detection.method.label)+
   xlab("Detection time")+
   ylab("Proportion of runs")+
-  ggtitle("Surveillance")+
+#  ggtitle("Surveillance")+
    facet_grid(vaccination~size + variable, labeller = labeller(variable = detection.method.label) )+theme(legend.position = "none")
 ggsave("./output/figures/scenarios_layer_surveillance.png", scale = 1.23)
 
@@ -488,6 +436,22 @@ humanexposure.layer$ratio.tot <- humanexposure.layer$total.exposure/humanexposur
 
 saveRDS(humanexposure.layer, file = "./output/humanexposureLayer.RDS")
 humanexposure.layer<- readRDS( file = "./output/humanexposureLayer.RDS")
+
+
+
+ggplot(humanexposure.layer) +
+  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = detection.method),binwidth = .15,alpha = 0.5,colour = "black",position = "identity")+
+  scale_fill_manual(values=c(pas.det.time = "black",ac.det.time = "orange",min.det.time= "red"),
+                    labels = c(pas.det.time = "Passive",ac.det.time = "Active",min.det.time= "Minimum"))+
+  xlab("Risk ratio of exposure \n (reference baseline)") + 
+  ylab("Proportion")+
+  scale_x_log10()+
+  #lims(x = c(0,3))+
+  geom_vline(xintercept = 1)+
+  facet_grid((as.numeric(vaccination)*100)~size)
+  #ggtitle("Human exposure layers")#+theme(legend.position = 'none')
+ggsave("./output/figures/humanexposurelayer.png")
+
 # 
 # saveRDS(humanexposure.layer%>%reframe(.by = c(scenario,detection.method),
 #                                            mean = mean(detection.exposure)), file = "./output/MEANexposurefitLayerVaccin.RDS")
@@ -656,21 +620,26 @@ saveRDS(surveillance.layer.clinprot,"./output/surveillancelayerclinprot.RDS")
 surveillance.layer.clinprot<-readRDS("./output/surveillancelayerclinprot.RDS")
 
 ggplot(data = surveillance.layer.clinprot%>%
-         select(c("run","rep","scenario","pas.det.time","ac.det.time","min.det.time"))%>%
+         select(c("run","rep","scenario","pas.det.time","min.det.time","ac.det.time"))%>%
          reshape2::melt(id.vars = c("run","rep","scenario")) )+
   geom_histogram(aes(x = as.numeric(value), y=after_stat(count/sum(count)), fill = variable),    colour = "black", 
                  alpha = 0.5, binwidth = 1.0,position = "identity")+
   xlim(0,NA)+ylim(0,NA)+
-  scale_fill_manual(values=c(pas.det.time = "black",ac.det.time = "red",min.det.time= "orange"),
-                    labels = c(pas.det.time = "Passive",ac.det.time = "Active",min.det.time= "Minimum"))+
+  scale_fill_manual(values=c(pas.det.time = "black",min.det.time= "red",ac.det.time = "orange"),
+                    labels = c(pas.det.time = "Passive",min.det.time= "Minimum",ac.det.time = "Active"))+
   xlab("Detection time")+
   ylab("Proportion of runs")+
-  ggtitle("Surveillance")+
+#  ggtitle("Surveillance")+
   facet_grid(scenario~variable,labeller = labeller(scenario = scenario.label.clin, variable = detection.method.label))
 
 ggsave("./output/figures/scenarios_layer.clinprot_surveillance.png")
 
 dists.clinprot.surveillance <- fit.distribution(surveillance.layer.clinprot)
+
+surveillance.layer.clinprot%>%
+  select(c("run","rep","scenario","pas.det.time","ac.det.time","min.det.time"))%>%reframe(.by = scenario,
+                                                                                          mean.pas = mean(pas.det.time),
+                                                                                          mean.min = mean(min.det.time))
 
 saveRDS(dists.clinprot.surveillance, "./output/distsDetClinProt.rds")
 dists.clinprot.surveillance<-readRDS( "./output/distsDetClinProt.rds")
@@ -711,15 +680,15 @@ dists.clinprot.exposure <- fit.distribution(humanexposure.layer.clin,
 
 ggplot(humanexposure.layer.clin) +
   geom_histogram(aes(ratio.det,after_stat(.15*density), fill = detection.method),binwidth = .15,alpha = 0.5,colour = "black",position = "identity")+
-  scale_fill_manual(values=c(pas.det.time = "black",ac.det.time = "orange",min.det.time= "red"),
-                    labels = c(pas.det.time = "Passive",ac.det.time = "Active",min.det.time= "Minimum"))+
+  scale_fill_manual(values=c(pas.det.time = "black",min.det.time= "red",ac.det.time = "orange"),
+                    labels = c(pas.det.time = "Passive",min.det.time= "Minimum",ac.det.time = "Active"))+
   xlab("Risk ratio of exposure \n (reference baseline)") + 
   ylab("Proportion")+
   lims(x = c(0,3))+
   geom_vline(xintercept = 1)+
   facet_grid(scenario~detection.method,labeller = labeller(scenario = scenario.label.clin,
-                                            detection.method = detection.method.label))+
-  ggtitle("Human exposure layers")#+theme(legend.position = 'none')
+                                            detection.method = detection.method.label))
+#+  ggtitle("Human exposure layers")#+theme(legend.position = 'none')
 ggsave("./output/figures/humanexposurelayer_clinprot.png")
 
 
@@ -773,7 +742,8 @@ plot.output.grid(rbind(cbind(output.layer.wane[[1]],scenario = pars.layer.wane[[
                        cbind(output.layer.wane[[7]],scenario = pars.layer.wane[[7]]$scenario),
                        cbind(output.layer.wane[[8]],scenario = pars.layer.wane[[8]]$scenario)), 
                  vars =c("I.1","I.2","R.1","R.2","DR.1","DR.2"),
-                 title = "Waning Immunity", scales = "free_y" , itype.label = itype.labels, scenario.label = scenario.label.wane, scenario.levels = scenario.levels.label.wane )
+                 #title = "Waning Immunity", 
+                 scales = "free_y" , itype.label = itype.labels, scenario.label = scenario.label.wane, scenario.levels = scenario.levels.label.wane )
 ggsave(file = "./output/figures/waningLayer.png", scale =1.23)
 
 #surveillance ###
@@ -795,7 +765,7 @@ for(i in c(1:length(scenario.wane.list))){
                                                   pfarm = 1., 
                                                   panimal = 1.),
                scenario = pars.layer.wane[[i]]$scenario,
-               introTime = pars.layer.wane$intro.time)
+               introTime = pars.layer.wane[[i]]$intro.time)
   surveillance.layer.wane <-if(!exists("surveillance.layer.wane")){tmp}else {rbind(surveillance.layer.wane,tmp)}
   
 }
@@ -816,7 +786,7 @@ ggplot(data = surveillance.layer.wane%>%
                     labels = c(pas.det.time = "Passive",ac.det.time = "Active",min.det.time= "Minimum"))+
   xlab("Detection time")+
   ylab("Proportion of runs")+
-  ggtitle("Surveillance")+
+#  ggtitle("Surveillance")+
   facet_grid(scenario~variable,labeller = labeller(scenario = scenario.label.wane, 
                                                    variable = detection.method.label))
 
@@ -871,7 +841,8 @@ ggplot(humanexposure.layer.wane) +
   ylab("Proportion")+
   geom_vline(xintercept = 1)+
   facet_grid(scenario~detection.method,labeller = labeller(scenario = scenario.label.wane, detection.method = detection.method.label))+
-  ggtitle("Human exposure layers")+theme(legend.position = 'none')
+  #ggtitle("Human exposure layers")+
+  theme(legend.position = 'none')
 ggsave("./output/figures/humanexposurelayer_wane.png", dpi = 300, scale = 1.23)
 
 
@@ -954,8 +925,9 @@ plot.output.grid(rbind(cbind(output.layer.waneDifStrain[[1]],scenario = pars.lay
                        cbind(output.layer.waneDifStrain[[7]],scenario = pars.layer.waneDifStrain[[7]]$scenario),
                        cbind(output.layer.waneDifStrain[[8]],scenario = pars.layer.waneDifStrain[[8]]$scenario)), 
                  vars =c("I.1","I.2","R.1","R.2","DR.1","DR.2"),
-                 title = "Waning Immunity", scales = "free_y" , itype.label = itype.labels, scenario.label = scenario.label.waneDifStrain, scenario.levels = scenario.levels.label.waneDifStrain )
-ggsave(file = "./output/figures/waningLayer.png", scale =1.23)
+                 #title = "Waning Immunity - Heterologous", 
+                 scales = "free_y" , itype.label = itype.labels, scenario.label = scenario.label.waneDifStrain, scenario.levels = scenario.levels.label.waneDifStrain )
+ggsave(file = "./output/figures/waningLayerDifStrain.png", scale =1.23)
 
 
 #surveillance ####
@@ -998,7 +970,7 @@ ggplot(data = surveillance.layer.waneDifStrain%>%
                     labels = c(pas.det.time = "Passive",ac.det.time = "Active",min.det.time= "Minimum"))+
   xlab("Detection time")+
   ylab("Proportion of runs")+
-  ggtitle("Surveillance")+
+#  ggtitle("Surveillance")+
   facet_grid(scenario~variable,labeller = labeller(scenario = scenario.label.waneDifStrain, 
                                                    variable = detection.method.label))
 
@@ -1120,17 +1092,18 @@ humanexposure.layer.waneDifStrain<-readRDS(file = "./output/humanexposureLayerwa
 
 
 ggplot(humanexposure.layer.waneDifStrain) +
-  geom_histogram(aes(detection.exposure,after_stat(.15*density), fill = detection.method),
+  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = detection.method),
                  #binwidth = .15,
                  alpha = 0.5,colour = "black",position = "identity")+
   scale_fill_manual(values=c(pas.det.time = "black",ac.det.time = "orange",min.det.time= "red"),
                     labels = c(pas.det.time = "Passive",ac.det.time = "Active",min.det.time= "Minimum"))+
- # scale_x_log10(breaks=c(0.0001,0.001,0.01,0.1,0,1))+
+  scale_x_log10(breaks=c(0.0001,0.001,0.01,0.1,0,1))+
   xlab("Risk ratio of exposure \n (reference baseline)") + 
   ylab("Proportion")+
   geom_vline(xintercept = 1)+
   facet_grid(scenario~detection.method,labeller = labeller(scenario = scenario.label.waneDifStrain, detection.method = detection.method.label))+
-  ggtitle("Human exposure layers")+theme(legend.position = 'none')
+#  ggtitle("Human exposure layers")+
+  theme(legend.position = 'none')
 ggsave("./output/figures/humanexposurelayer_waneDifStrain.png", dpi = 300, scale = 1.23)
 
 humanexposure.layer.waneDifStrain$fade.out <-humanexposure.layer.waneDifStrain$phigh >0.5

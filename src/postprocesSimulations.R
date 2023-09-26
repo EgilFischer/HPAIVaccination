@@ -68,7 +68,15 @@ plot.output.sparse <- function(output,vars,title = NULL, frac = 0.5){
 }
 
 #plot a grid with outputs 
-plot.output.grid <- function(output,vars,title = NULL, frac = NULL , scales = "fixed", scenario.label = NULL, scenario.levels = NULL,itype.label = NULL, itype.levels =NULL){
+plot.output.grid <- function(output,vars,
+                             title = NULL, 
+                             frac = NULL , 
+                             scales = "fixed", 
+                             scenario.label = NULL, 
+                             scenario.levels = NULL,
+                             itype.label = NULL, 
+                             itype.levels =NULL,
+                             legend.position = "none"){
     if(is.null(frac)){out = output}else{
       out <- data.frame(output)%>%sample_n(round(frac*length(output$time)))
     }
@@ -83,6 +91,7 @@ plot.output.grid <- function(output,vars,title = NULL, frac = NULL , scales = "f
     facet_grid(scenario~itype, 
                 scales = scales, 
                 labeller = labeller(scenario = scenario.label, itype = itype.label))+
+    theme(legend.position = legend.position )+
     ggtitle(title)
   
 }
