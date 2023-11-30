@@ -17,3 +17,4 @@ package.check <- lapply(
 rm.exist <- function(x){
   if(exists(deparse(substitute(x))))rm(x); 
 }
+ 
