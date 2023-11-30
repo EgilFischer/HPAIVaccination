@@ -7,8 +7,10 @@
 *.png
 *.jpg
 *.tif
+*.xlsx
 /input *
 /output *
 .RDataTmp*
 .RDataTmp*
 .RDataTmp*
+
