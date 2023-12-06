@@ -23,7 +23,7 @@ param.list.baseline.layer <- list(
   deltat = 0.05, #time step#
   N0 = 32000, #population size####
   initial= 10 , #initially infected
-  p.protect = 1, #1 - 6/26,#proportion initially protected by vaccination
+  p.hightitre = 1, #1 - 6/26,#proportion initially protected by vaccination
   beta = matrix(c(1.13, 1.13,0.05,0.05),ncol = itypes),#,#transmission coefficient matrix for a 2x2 matrix (1 -> 1, 1->2, 2-> 1, 2-> 2)#Use values for infectivity and infectious periods from Sitaris et al 2016 https://doi.org/10.1098/rsif.2015.0976#Type 1  = not protected by vaccination and type 2 = protected by vaccination
   latency.period = c(.1,.1),#choose very short latency period
   k.latency =2,##k parameter Erlang distribution
@@ -47,7 +47,7 @@ for(i in c(1:3)){
   param.list$N0 <-  c(15000,32000,64000)[i]
   param.list$p.hightitre <- c(0.0, 0.5,0.6,0.7,0.8,0.9)[j]
   param.list$scenario <- paste0("layerSize",param.list$N0,"Vac",param.list$p.hightitre*100);
-  scenario.list.size.vaccination[[7*(i-1)+j]]<- param.list
+  scenario.list.size.vaccination[[6*(i-1)+j]]<- param.list
   }
 }
 
@@ -56,7 +56,7 @@ for(i in  c(1:length(scenario.list.size.vaccination))){
   print(start<- Sys.time()); 
   inits.gamma <- with(scenario.list.size.vaccination[[i]],{
     #adjust p.protect with waning
-    p.protect.adjust <- p.protect*pgamma(intro.time, shape = (trans.mean^2)/trans.var , scale = trans.var/trans.mean, lower.tail = FALSE);
+    p.protect.adjust <- p.hightitre*pgamma(intro.time, shape = (trans.mean^2)/trans.var , scale = trans.var/trans.mean, lower.tail = FALSE);
     
      return(list(
       L0 = round(c(1-p.protect.adjust,p.protect.adjust)*initial,digits = 0), #number of initially latently infected
