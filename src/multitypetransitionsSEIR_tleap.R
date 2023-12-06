@@ -239,7 +239,7 @@ sim.multitypeSEIR_tleap_distwaning <- function(param.list,init,waning.distributi
       
       
       #one run until maximum time or no infected animals left
-      while(state$time < max.time)# & sum(state$L)+sum(state$I)>0)
+      while(state$time < max.time & (sum(state$L)+sum(state$I)>0 | state$time < intro.time) )
       {
         #record this moment
         if(!exists("output")) output <- NULL;
@@ -308,26 +308,26 @@ sim.multitypeSEIR_tleap_distwaning <- function(param.list,init,waning.distributi
   
   
 }
-
-rm(x);x <-sim.multitypeSEIR_tleap_distwaning(param.list,
-                                             inits.gamma,
-                                             gamma.waning.distribution, seed = NULL)
-
-
-## #####
-ggplot(data = data.frame(x))+ 
-  geom_path(aes(x = time, y = S.1 + S.2,group = run, colour = "S"))+
-  geom_path(aes(x = time, y = L.1 + L.2,group = run, colour = "L"))+
-  geom_path(aes(x = time, y = I.1 + I.2,group = run, colour = "I"))+
-  geom_path(aes(x = time, y = R.1 + R.2,group = run, colour = "R"))
-
-with(param.list,{
-ggplot(data = data.frame(x))+ 
-  geom_point(aes(x = x$time, y = N0*pgamma(x$time, shape = (trans.mean^2)/trans.var , scale = trans.var/trans.mean )))+
-  geom_path(aes(x = time, y = S.1,group = run, colour = "S.1"))+
-  geom_path(aes(x = time, y = S.2,group = run, colour = "S.2"))
-})
-
-ggplot(data = data.frame(x))+ 
-  geom_path(aes(x = time, y = I.1,group = run, colour = "I.1"))+
-  geom_path(aes(x = time, y = I.2,group = run, colour = "I.2"))
+# 
+# rm(x);x <-sim.multitypeSEIR_tleap_distwaning(param.list,
+#                                              inits.gamma,
+#                                              gamma.waning.distribution, seed = NULL)
+# 
+# 
+# ## #####
+# ggplot(data = data.frame(x))+ 
+#   geom_path(aes(x = time, y = S.1 + S.2,group = run, colour = "S"))+
+#   geom_path(aes(x = time, y = L.1 + L.2,group = run, colour = "L"))+
+#   geom_path(aes(x = time, y = I.1 + I.2,group = run, colour = "I"))+
+#   geom_path(aes(x = time, y = R.1 + R.2,group = run, colour = "R"))
+# 
+# with(param.list,{
+# ggplot(data = data.frame(x))+ 
+#   geom_point(aes(x = x$time, y = N0*pgamma(x$time, shape = (trans.mean^2)/trans.var , scale = trans.var/trans.mean )))+
+#   geom_path(aes(x = time, y = S.1,group = run, colour = "S.1"))+
+#   geom_path(aes(x = time, y = S.2,group = run, colour = "S.2"))
+# })
+# 
+# ggplot(data = data.frame(x))+ 
+#   geom_path(aes(x = time, y = I.1,group = run, colour = "I.1"))+
+#   geom_path(aes(x = time, y = I.2,group = run, colour = "I.2"))
