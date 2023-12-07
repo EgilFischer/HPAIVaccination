@@ -255,7 +255,8 @@ sim.multitypeSEIR_tleap_distwaning <- function(param.list,init,waning.distributi
         output$DL <- rbind(output$DL, c(state$DL));
         output$DI <- rbind(output$DI, c(state$DI));
         output$DR   <- rbind(output$DR, c(state$DR));
-        output$N <- rbind(output$N, c(state$N))
+        output$N <- rbind(output$N, c(state$N));
+        output$dt <- deltat;
         
         #first transitions from high titre to low titre
         transProb <-c(0,waning.distribution(state$time, param.list),0,0)

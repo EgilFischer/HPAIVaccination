@@ -63,12 +63,13 @@ detection.method.label <- c(pas.det.time = "Passive",
 
 #Baseline ####
 #load baseline simulations 
-output.baseline.layer <- cbind(load.sims("./output/layerSize32000Vac0")$output)
+output.baseline.layer <- readRDS("./output/20231207outputlayerSize15000Vac0.RDS")$out#cbind(load.sims("./output/layerSize32000Vac0")$output)
 output.baseline.broiler <- load.sims("./output/broilerSize38000Vac0")$output
 
 #load baseline parameters (assuming all parameter lists are equal within a folder)
-pars.baseline.layer <- load.sims("./output/layerSize32000Vac0", params = TRUE)$pars[[1]]
+pars.baseline.layer <- readRDS("./output/20231207outputlayerSize15000Vac0.RDS")$pars#load.sims("./output/layerSize32000Vac0", params = TRUE)$pars[[1]]
 pars.baseline.broiler <- load.sims("./output/broilerSize38000Vac0", params = TRUE)$pars[[1]]
+pars.baseline.layer$variance.infectious.period <- pars.baseline.layer$k.infectious/(pars.baseline.layer$k.infectious/pars.baseline.layer$infectious.period)^2
 
 #probability of a major outbreak ####
 q1q2.baseline.layer <- q1q2(pars.baseline.layer)
@@ -96,13 +97,14 @@ ggsave("./output/figures/probMinorOutbreakLayer.png" ,q1q2plot, scale = 1.23)
 #Layer and Broiler different sizes       #
 ##########################################
 scenarios.tmp <-  data.frame(
-  type = c(rep("layer",3),rep("broiler",3)),
-  size = c(15000,32000,64000,
-           20000,38000,73000))
+  type = c(rep("layer",3)),#rep("broiler",3)),
+  size = c(15000))#,32000,64000,
+           #20000,38000,73000))
 
 scenario.list.size.type <- mapply(FUN = function(type, size){list(data.frame(scenario  = paste0(type,"Size",size,"Vac0")))}, scenarios.tmp$type,scenarios.tmp$size)
 
-output.size.type <- lapply(c(1:length(scenario.list.size.type)),function(i){load.sims(paste0("./output/",gsub(scenario.list.size.type[[i]]$scenario,pattern = "[.]", replacement = "")))$output})
+output.sizetest<- repeat.detection.time.surveillance(as.data.frame(output.baseline.layer),
+.type <- lapply(c(1:length(scenario.list.size.type)),function(i){load.sims(paste0("./output/",gsub(scenario.list.size.type[[i]]$scenario,pattern = "[.]", replacement = "")))$output})
 pars.size.type <- lapply(c(1:length(scenario.list.size.type)),function(i){load.sims(paste0("./output/",gsub(scenario.list.size.type[[i]]$scenario,pattern = "[.]", replacement = "")))}$pars[[1]])
 
 #plot the baseline size####

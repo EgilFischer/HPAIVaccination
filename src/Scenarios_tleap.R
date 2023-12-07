@@ -51,7 +51,7 @@ for(i in c(1:3)){
   }
 }
 
-for(i in  c(1:length(scenario.list.size.vaccination))){
+for(i in  c(1:6)){#length(scenario.list.size.vaccination))){
   print(scenario.list.size.vaccination[[i]]$scenario);
   print(start<- Sys.time()); 
   inits.gamma <- with(scenario.list.size.vaccination[[i]],{
