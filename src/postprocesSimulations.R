@@ -125,7 +125,8 @@ human.exposure.detection.multiple.runs<- function(output, beta.human,detection.t
   for(det.method in var.det)
   {
   if(is.null(detection.time$rep))detection.time$rep <- 1;
-  tot.exposure<- data.frame(output)%>% group_by(run)%>%reframe(total.exposure = sum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt))
+  tot.exposure<- data.frame(output)%>% 
+    group_by(run)%>%reframe(total.exposure = sum(beta.human[1,1]*I.1*dt+beta.human[1,2]* I.2*dt))
   exp.det<-c();
   for(i in tot.exposure$run){
     reps <- detection.time%>%filter(run == i)%>%select("rep")%>%max
