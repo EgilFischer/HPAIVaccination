@@ -22,7 +22,8 @@ itype.labels <- c("I.1" ="I.1",
 SIR_labels <- c("S.1" ="S",
                 "I.1"="I",
                 "R.1"="R",
-                "DR.1"= "Dead")
+                "DR.1"= "Dead",
+                "DI.1" = "Dead")
 labels.type <-c("46"  = "Broiler", "510" = "Layer")
 labels.size <-c("15000"  = "Small", "32000" = "Medium", "64000" = "Large", "20000"  = "Small", "38000" = "Medium", "73000" = "Large")
 scenario.label.clin <- c(layerSize32000Vac0 = "Baseline",
@@ -62,14 +63,20 @@ detection.method.label <- c(pas.det.time = "Passive",
 
 
 #Baseline ####
+baseline.layer<- readRDS("./output/coverage/20231210outputlayerSize32000Vac0.RDS")
+baseline.broiler<- readRDS("./output/coverage/20231210outputbroilerSize38000Vac0.RDS")
 #load baseline simulations 
-output.baseline.layer <- readRDS("./output/20231207outputlayerSize15000Vac0.RDS")$out#cbind(load.sims("./output/layerSize32000Vac0")$output)
-output.baseline.broiler <- load.sims("./output/broilerSize38000Vac0")$output
+output.baseline.layer <- baseline.layer$out
+output.baseline.broiler <- baseline.broiler$out
 
 #load baseline parameters (assuming all parameter lists are equal within a folder)
-pars.baseline.layer <- readRDS("./output/20231207outputlayerSize15000Vac0.RDS")$pars#load.sims("./output/layerSize32000Vac0", params = TRUE)$pars[[1]]
-pars.baseline.broiler <- load.sims("./output/broilerSize38000Vac0", params = TRUE)$pars[[1]]
-pars.baseline.layer$variance.infectious.period <- pars.baseline.layer$k.infectious/(pars.baseline.layer$k.infectious/pars.baseline.layer$infectious.period)^2
+pars.baseline.layer <- baseline.layer$pars
+pars.baseline.broiler <- baseline.broiler$pars
+#calculate mean and variance of infectious period
+pars.baseline.layer$variance.infectious.period <- with(pars.baseline.layer, k.infectious/(k.infectious/infectious.period)^2)
+pars.baseline.layer$variance.infectious.period <- with(pars.baseline.broiler, k.infectious/(k.infectious/infectious.period)^2)
+
+
 
 #probability of a major outbreak ####
 q1q2.baseline.layer <- q1q2(pars.baseline.layer)
@@ -97,14 +104,14 @@ ggsave("./output/figures/probMinorOutbreakLayer.png" ,q1q2plot, scale = 1.23)
 #Layer and Broiler different sizes       #
 ##########################################
 scenarios.tmp <-  data.frame(
-  type = c(rep("layer",1)),#rep("broiler",3)),
-  size = c(15000))#,32000,64000,
-           #20000,38000,73000))
+  type = c(rep("layer",3),rep("broiler",3)),
+  size = c(15000,32000,64000,
+           20000,38000,73000))
 
 scenario.list.size.type <- mapply(FUN = function(type, size){list(data.frame(scenario  = paste0(type,"Size",size,"Vac0")))}, scenarios.tmp$type,scenarios.tmp$size)
 
-output.size.type <- lapply(c(1:length(scenario.list.size.type)),function(i){readRDS(paste0("./output/20231207output",gsub(scenario.list.size.type[[i]]$scenario,pattern = "[.]", replacement = ""),".RDS"))$out})
-pars.size.type <- lapply(c(1:length(scenario.list.size.type)),function(i){readRDS(paste0("./output/20231207output",gsub(scenario.list.size.type[[i]]$scenario,pattern = "[.]", replacement = ""),".RDS"))}$pars)
+output.size.type <- lapply(c(1:length(scenario.list.size.type)),function(i){readRDS(paste0("./output/coverage/20231210output",gsub(scenario.list.size.type[[i]]$scenario,pattern = "[.]", replacement = ""),".RDS"))$out})
+pars.size.type <- lapply(c(1:length(scenario.list.size.type)),function(i){readRDS(paste0("./output/coverage/20231210output",gsub(scenario.list.size.type[[i]]$scenario,pattern = "[.]", replacement = ""),".RDS"))}$pars)
 
 #plot the baseline size####
 plot.data <- NULL;
@@ -112,19 +119,18 @@ for(j in c(1:length(scenario.list.size.type))){
   tmp <- cbind(data.frame(output.size.type[[j]]),
                scenario = scenario.list.size.type[[j]]$scenario,
                size = scenarios.tmp$size[[j]],
-               type = scenarios.tmp$type[[j]])
-  tmp <- sample_n(tmp,ceiling(0.01*length(tmp$time)))
+               type = firstup( scenarios.tmp$type[[j]]))
+  #tmp <- sample_n(tmp,ceiling(0.01*length(tmp$time)))
   plot.data<- rbind(plot.data,tmp)
 }
 lf.plot.data<- plot.data%>%reshape2::melt(id.vars = c("time","run","dt","scenario", "size","type") )
 inf.lf.plot.data<- lf.plot.data%>%filter(variable %in% c("I.1","I.2","R.1","R.2"))
 
-
-ggplot(data = lf.plot.data%>%filter(variable %in% c("S.1","I.1","R.1","DR.1")))+
+ggplot(data = lf.plot.data%>%filter(variable %in% c("S.1","I.1","R.1","DI.1"))%>%arrange(time,run) )+
   geom_step(aes(x = time, y = value, colour = type,group = as.factor(run)))+
   scale_colour_manual(values = c("darkblue","darkred"),labels = c("Broiler","Layer"),name = "Type")+
-  facet_grid(as.factor(size) ~ variable, labeller = labeller(variable = SIR_labels)) 
-
+  #facet_grid(type+as.factor(size) ~ variable, labeller = labeller(variable = SIR_labels)) 
+  facet_nested(type*as.factor(size) ~ variable, labeller = labeller(variable = SIR_labels)) 
 ggsave("./output/figures/baselineoutbreaklayerbroiler.png")
 
 #detection of baseline scenarios####
@@ -172,7 +178,7 @@ ggplot(data = surveillance.size.type%>%
   xlab("Detection time")+
   ylab("Proportion of runs")+
   #ggtitle("Surveillance")+
-  facet_grid(size~max.time+variable, labeller = labeller(max.time = labels.type, variable = detection.method.label))
+  facet_grid(size + max.time~variable, labeller = labeller(max.time = labels.type, variable = detection.method.label))
 ggsave("./output/figures/scenarios_sizetype_surveillance.png", scale = 1.23)
 
 surveillance.size.type%>%reframe(.by = scenario,
@@ -224,7 +230,7 @@ humanexposure.size.type  <- NULL
 
 for(k in c(1:length(output.size.type))){
   humanexposure.size.type <- rbind(humanexposure.size.type,
-                               cbind(human.exposure.detection.multiple.runs(as.data.frameoutput.size.type[[k]],
+                               cbind(human.exposure.detection.multiple.runs(as.data.frame(output.size.type[[k]]),
                                                                             pars.size.type[[k]]$beta,
                                                                             surveillance.size.type%>%filter(scenario == pars.size.type[[k]]$scenario)),
                                      scenario = pars.size.type[[k]]$scenario,
@@ -245,7 +251,7 @@ drop1(fit.pas.mean.sizetype)
 summary(fit.pas.mean.sizetype)
 ggplot()+
   geom_point(aes(size, mean, colour =as.factor(type)),dists.exposure%>%filter(detection.method =="pas.det.time"))+
-  geom_path(aes(size, val), data.frame(size =dists.exposure%>%filter(detection.method =="pas.det.time")%>%select("size"), val =predict(fit.pas.mean.sizetype) ))
+  geom_point(aes(size, val), data.frame(size =dists.exposure%>%filter(detection.method =="pas.det.time")%>%select("size"), val =predict(fit.pas.mean.sizetype) ))
 
 
 saveRDS(fit.pas.mean.sizetype, "./output/exposureMean_sizetype_passive.RDS")
@@ -255,17 +261,14 @@ fit.pas.mean.sizetype<-readRDS("./output/exposureMean_sizetype_passive.RDS")
 fit.min.mean.sizetype <- lm(mean ~ size + type , data = dists.exposure%>%filter(detection.method =="min.det.time"))
 drop1(fit.min.mean.sizetype)
 summary(fit.min.mean.sizetype)
-spatial.input.x <- spatial.input
-names(spatial.input.x) <- c("X","Y","size","type")
-ggplot(data =cbind(data.frame(spatial.input.x%>%filter(type %in% c("BROILER","LAYER"))), exposure = predict(fit.pas.mean,newdata = spatial.input.x%>%filter(type %in% c("BROILER","LAYER")))))+
-         geom_point(aes(x = size, y = exposure, colour = type ))
-       
+
+
 saveRDS(fit.min.mean.sizetype, "./output/exposureMean_sizetype_minimum.RDS")
 fit.min.mean.sizetype<-readRDS("./output/exposureMean_sizetype_minimum.RDS")
 
 fit.pas.var.sizetype <- lm(sqrt(var) ~ size + type , data = dists.exposure%>%filter(detection.method =="pas.det.time"))
-drop1(fit.pas.var)
-summary(fit.pas.var)
+drop1(fit.pas.var.sizetype)
+summary(fit.pas.var.sizetype)
 
 
 saveRDS(fit.pas.var.sizetype, "./output/exposureSD_sizetype_passive.RDS")
@@ -283,8 +286,8 @@ scenarios.tmp <-  expand.grid(size = c(15000,
 
 scenario.list.size.vaccination <- mapply(FUN = function(size,vac){list(data.frame(scenario  = paste0("layerSize",size,"Vac",vac)))}, scenarios.tmp$size,scenarios.tmp$vac)
 
-output.layer <- lapply(c(1:length(scenario.list.size.vaccination)),function(i){load.sims(paste0("./output/",gsub(scenario.list.size.vaccination[[i]]$scenario,pattern = "[.]", replacement = "")))$output})
-pars.layer <- lapply(c(1:length(scenario.list.size.vaccination)),function(i){load.sims(paste0("./output/",gsub(scenario.list.size.vaccination[[i]]$scenario,pattern = "[.]", replacement = "")))}$pars[[1]])
+output.layer <- lapply(c(1:length(scenario.list.size.vaccination)),function(i){readRDS(paste0("./output/coverage/20231210output",gsub(scenario.list.size.vaccination[[i]]$scenario,pattern = "[.]", replacement = ""),".RDS"))$out})
+pars.layer <- lapply(c(1:length(scenario.list.size.vaccination)),function(i){readRDS(paste0("./output/coverage/20231210output",gsub(scenario.list.size.vaccination[[i]]$scenario,pattern = "[.]", replacement = ""),".RDS"))}$pars)
 
 #plot the baseline size####
 plot.data <- NULL;

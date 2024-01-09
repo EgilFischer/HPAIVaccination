@@ -19,9 +19,9 @@ param.list.baseline.layer <- list(
   scenario = "Layer", #scenario
   runs =100, #number of runs
   max.time = 17*30,#length of the run
-  itypes = itypes, #types####
+  itypes = itypes, #types#
   deltat = 0.05, #time step#
-  N0 = 32000, #population size####
+  N0 = 32000, #population size
   initial= 10 , #initially infected
   p.hightitre = 1, #1 - 6/26,#proportion initially protected by vaccination
   beta = matrix(c(1.13, 1.13,0.05,0.05),ncol = itypes),#,#transmission coefficient matrix for a 2x2 matrix (1 -> 1, 1->2, 2-> 1, 2-> 2)#Use values for infectivity and infectious periods from Sitaris et al 2016 https://doi.org/10.1098/rsif.2015.0976#Type 1  = not protected by vaccination and type 2 = protected by vaccination
@@ -215,27 +215,14 @@ for(i in  c(1:length(scenario.list.waning.hetero))){
 
 
 
+
 #Broilers ####
 #Baseline parameters for broiler flock ####
-param.list.baseline.broiler <- list(
-  scenario = "baseline_Broiler", #scenario
-  runs = 100, #number of runs
-  max.time = 46,#length of the run
-  itypes = 2, #type
-  deltat = 0.05, #time step#
-  N0 = 38000, #population size - agramatie website
-  initial= 10 , #initially infected - choosen value
-  p.hightitre = 0,#proportion initially protected by vaccination
-  beta = matrix(c(1.13, 1.13,0.05,0.05),ncol = 2),#,#transmission coefficient matrix for a 2x2 matrix (1 -> 1, 1->2, 2-> 1, 2-> 2)#Use values for infectivity and infectious periods from Sitaris et al 2016 https://doi.org/10.1098/rsif.2015.0976 and Gemeraard et al 2023 #Type 1  = not protected by vaccination and type 2 = protected by vaccination
-  infectious.period = c(3.0,4.0),#Duration infectious period 
-  k.infectious = 20, #k parameter Erlang distribution
-  latency.period = c(.1,.1),#choose very short latency period
-  k.latency =2,##k parameter Erlang distribution
-  trans.mean = 514, #only considers transistion from type 2 to 1
-  trans.var = 85^2, #only considers transistion from type 2 to 1
-  pdie = c(1.0,0.01),#probability of dying at end of infectious period
-  mortRate = 0.0005 #per capita death rate #Mortality events - based on performance reports and pers. com. mieke matthijs 0.5% per week +Gonzales & elbers figure 1 
-)
+param.list.baseline.broiler <- param.list.baseline.layer;
+param.list.baseline.broiler$scenario <- "Broiler";
+param.list.baseline.broiler$max.time<- 46;
+param.list.baseline.broiler$N0<- 38000;
+
 
 
 
@@ -243,11 +230,11 @@ param.list.baseline.broiler <- list(
 scenario.list.size.vaccination <- list()
 for(i in c(1:3)){
   for(j in c(1:6)){
-    param.list <- param.list.baseline.layer;
+    param.list <- param.list.baseline.broiler;
     param.list$runs <- 100;
     param.list$N0 <-  c(20000,38000,73000)[i]
     param.list$p.hightitre <- c(0.0, 0.5,0.6,0.7,0.8,0.9)[j]
-    param.list$scenario <- paste0("layerSize",param.list$N0,"Vac",param.list$p.hightitre*100);
+    param.list$scenario <- paste0("broilerSize",param.list$N0,"Vac",param.list$p.hightitre*100);
     scenario.list.size.vaccination[[6*(i-1)+j]]<- param.list
   }
 }
@@ -373,6 +360,7 @@ intro.time <- c(0, 50, 100, 200,300,400,500)  #initial high-titre = exp(-transRa
 #Waning scenarios
 scenario.list.waning.hetero <- list()
 for(i in c(1:length(intro.time))){
+  t0 <-intro.time[i];
   param.list <- param.list.baseline.layer;
   param.list$trans.mean = 280; #only considers transistion from type 2 to 1
   param.list$trans.var = 140^2; #only considers transistion from type 2 to 1
