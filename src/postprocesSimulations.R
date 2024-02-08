@@ -10,44 +10,12 @@
 source("./src/loadLibraries.R") 
 
 #load simulations ####
-load.sims <- function(path, interval = NULL, params = TRUE){
-  sims <- list.files(path, pattern = ".RDS");if(length(sims) == 0) stop("No simulations in this folder");
-  #recode runs
-  run.counter =1;
-   for(i in sims){
-     if(is.null(interval)){
-     if(!exists("tmp.output"))
-        {
-          tmp.output <-as.data.frame(readRDS(paste0(path,"/",i))$out)
-          tmp.output$run <- run.counter
-          run.counter = run.counter+1
-          }else
-        {
-          tmp <- as.data.frame(readRDS(paste0(path,"/",i))$out)
-          tmp$run <- run.counter
-          run.counter = run.counter+1
-          tmp.output <- rbind(tmp.output,tmp)}
-        }else #merge into intervals and reset dt
-        {
-          tmp <- as.data.frame(readRDS(paste0(path,"/",i))$out);
-          tmp$run <- run.counter;
-          run.counter = run.counter+1;
-          tmp$interval.index <- tmp$time%/%interval;
-          tmp$tround <- interval*(tmp$interval.index+sign(tmp$time))
-          tmp <- tmp%>%group_by(tround)%>%dplyr::slice(n())%>%ungroup
-          tmp$dt <- c(0,tail(tmp$time,-1)-head(tmp$time,-1) )
-            if(!exists("tmp.output")) {
-              tmp.output <-tmp
-              }else{ 
-                tmp.output <- rbind(tmp.output,tmp)
-            }
-          
-        }
-     if(params){if(!exists("param_lists")){param_lists <- NULL;param_lists[[1]] <- readRDS(paste0(path,"/",i))$pars}else{param_lists[[length(param_lists)+1]]<- readRDS(paste0(path,"/",i))$pars}}
-     #recode run
-     tmp.output
-   }
-  return(list(output = tmp.output,pars = if(params){param_lists}else{NULL}))
+load.sims<- function(path){
+  sim.files <- list.files(path, pattern = ".RDS");if(length(sim.files) == 0) stop("No simulations in this folder");
+  output <- lapply(sim.files,function(i){readRDS(paste0(path,i))$out})
+  pars<- lapply(sim.files,function(i){readRDS(paste0(path,i))$pars})
+  
+  return(list(output = output,pars =pars))
 }
 
 #Visualization of output ####

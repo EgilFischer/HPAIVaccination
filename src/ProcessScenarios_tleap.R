@@ -241,6 +241,11 @@ for(k in c(1:length(output.size.type))){
 saveRDS(humanexposure.size.type, "./output/exposure_sizetype.RDS")
 humanexposure.size.type<- readRDS( "./output/exposure_sizetype.RDS")
 
+ggplot(humanexposure.size.type)+
+  geom_histogram(aes(x = detection.exposure, fill = scenario))+
+  facet_nested(size ~.)+
+  ggtitle("Unvaccinated")
+
 dists.exposure <- fit.distribution(humanexposure.size.type, long.form = TRUE, scale = 1000,  added.vars = add.vars)
 ggplot(dists.exposure)+geom_point(aes(size, mean, colour = detection.method))+facet_grid(type~.)
 saveRDS(dists.exposure, "./output/exposureDist_sizetype.RDS")
@@ -308,10 +313,10 @@ ggsave("./output/figures/baselineoutbreaklayer.png")
 
 
 #surveillance ####
-reps <- 100;
+reps <- 10;
 rm(surveillance.layer)
 for(i in c(1:length(scenario.list.size.vaccination))){
-  tmp <- cbind(repeat.detection.time.surveillance(output.layer[[i]],
+  tmp <- cbind(repeat.detection.time.surveillance(as.data.frame(output.layer[[i]]),
                                                   reps = reps,
                                                   deaths.vars  = c("DS.1","DS.2","DI.1","DI.2","DR.1","DR.2"),
                                                   time.interval.pas = 1,
@@ -354,7 +359,7 @@ ggplot(data = surveillance.layer%>%
   xlab("Detection time")+
   ylab("Proportion of runs")+
 #  ggtitle("Surveillance")+
-   facet_grid(vaccination~size + variable, labeller = labeller(variable = detection.method.label) )+theme(legend.position = "none")
+   facet_nested(vaccination~size * variable, labeller = labeller(variable = detection.method.label) )+theme(legend.position = "none")
 ggsave("./output/figures/scenarios_layer_surveillance.png", scale = 1.23)
 
 #fit surveillance detection  
@@ -578,9 +583,12 @@ humanexposure.layer%>%reframe(.by = c(scenario,detection.method),
 #Scenarios with clinical protection ####
 ########################################
 #add the 32 000 animal farm without vaccination as baseline
-scenario.clinprot.list <- list(list(scenario = "layerSize32000Vac0"),list(scenario = "layerClinic50Phigh50"),list(scenario = "layerClinic50Phigh0"),list(scenario = "layerClinic01Phigh0"))
-output.layer.clinprot <- lapply(c(1:4),function(i){load.sims(paste0("./output/",gsub(scenario.clinprot.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.01)$output})
-pars.layer.clinprot <- lapply(c(1:4),function(i){load.sims(paste0("./output/",gsub(scenario.clinprot.list[[i]]$scenario,pattern = "[.]", replacement = "")), interval = 0.01)}$pars[[1]])
+scenario.clinprot.list <- list(list(scenario = "coverage/20231210outputlayerSize32000Vac0"),
+                               list(scenario = "clinic/20231210outputlayerClinic50Phigh50"),
+                               list(scenario = "clinic/20231210outputlayerClinic50Phigh0"),
+                               list(scenario = "clinic/20231210outputlayerClinic0.1Phigh0"))
+output.layer.clinprot <- lapply(c(1:4),function(i){as.data.frame(readRDS(paste0("./output/",scenario.clinprot.list[[i]]$scenario,".RDS"))$out)})
+pars.layer.clinprot <- lapply(c(1:4),function(i){readRDS(paste0("./output/",scenario.clinprot.list[[i]]$scenario,".RDS"))$pars})
 
 #visualize ####
 
@@ -594,7 +602,7 @@ plot.output.grid(rbind(cbind(output.layer.clinprot[[1]],scenario = pars.layer.cl
 ggsave(file = "./output/figures/clinicalprotectionLayer.png",scale = 1.23)
 
 #surveillance ####
-reps <- 100;
+reps <- 10;
 
 rm(surveillance.layer.clinprot)
 for(i in c(1:length(scenario.clinprot.list))){
@@ -618,7 +626,7 @@ for(i in c(1:length(scenario.clinprot.list))){
   
 }
 surveillance.layer.clinprot<- cbind(surveillance.layer.clinprot,surveillance.layer.clinprot$scenario%>%gsub(pattern ="layer.clinprot_", replacement = "")%>%str_split_fixed(pattern = c("intro"),2)%>%as.data.frame())
-
+unique(surveillance.layer.clinprot$scenario)
 
 saveRDS(surveillance.layer.clinprot,"./output/surveillancelayerclinprot.RDS")
 surveillance.layer.clinprot<-readRDS("./output/surveillancelayerclinprot.RDS")
