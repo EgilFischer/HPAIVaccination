@@ -32,6 +32,35 @@ for(j in c(1:length(output.layer.clintrans))){
     plot.data<- rbind(plot.data,tmp)
 }
 lf.plot.data<- plot.data%>%reshape2::melt(id.vars = c("time","run","dt","scenario", "clin1","clin2","phigh") )
+
+#create a data set with the total of infected animals (e.g. sum(N) - sum(S)) and maximum dead animals
+plot.data.end <- lf.plot.data%>%
+  reframe(.by = c(run, time, scenario,clin1,clin2, phigh),
+                                        n = sum(value[variable %in% c("N.1","N.2")]),
+                                        s = sum(value[variable %in% c("S.1","S.2")]),
+                                        dead = sum(value[variable %in% c("DS.1","DL.1","DI.1","DR.1","DS.2","DL.2","DI.2","DR.2")]))%>%
+  reframe(.by = c(run,  scenario,clin1,clin2, phigh),
+          infected = max(s)+10-min(s),
+          dead = max(dead)
+          )
+saveRDS(plot.data.end, "plot.data.end.RDS")
+plot.data.end<-readRDS("plot.data.end.RDS")
+#summarize plot end data
+plot.data.end.sum <- plot.data.end%>%reframe(.by=c(scenario,clin1,clin2, phigh),
+                                             meanInfected = mean(infected),
+                                             medianInfected = median(infected),
+                                             meanDead = mean(dead),
+                                             medianDead = median(dead))
+
+head(plot.data.end.sum)
+saveRDS(plot.data.end.sum, "plot.data.end.sum.RDS")
+
+#visualize
+ggplot(data = plot.data.end.sum, aes(x = clin1,  y = medianDead, colour = as.factor(clin2)))+
+  geom_point()+
+  facet_grid(phigh~.)
+
+
 #improve this test data.
 reframe.lf.plot.data <- lf.plot.data%>%reframe(.by = c(run, time, scenario,clin1,clin2, phigh, value),
                                         Deaths1 = variable %in% c("DI.1","DR.1")) %>%reframe(.by = c(run, time, scenario,clin1,clin2, phigh, Deaths1), sum(value))

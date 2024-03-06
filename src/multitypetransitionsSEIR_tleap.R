@@ -8,7 +8,7 @@
 #                  Creation date                         
 #########################################################
 #include libraries ####
-packages <- c("ggplot2","deSolve","tidyverse")
+packages <- c("ggplot2","deSolve","tidyverse","bbmle")
 
 
 ## Now load or install&load all

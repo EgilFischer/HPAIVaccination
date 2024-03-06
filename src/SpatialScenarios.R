@@ -127,7 +127,7 @@ inf.vac.novaccin$exposure <-exposure.function(inf.vac.novaccin)
 
 inf.vac.novaccin$exposure[inf.vac.novaccin$exposure<0]<-500
 saveRDS(inf.vac.novaccin, "./output/inf.vac.novaccin.RDS")
-inf.vac.novaccin<-readRDS( "./output/inf.vac.novaccin.RDS")
+inf.vac.novaccin<-readRDS( "./output/report/inf.vac.novaccin.RDS")
 exposure.novaccin.tot <- inf.vac.novaccin%>%reframe(.by = run,
                            tot.exposure = sum(exposure))
 
@@ -186,7 +186,7 @@ inf.vac.60vac<- left_join(infectious.periods,joined.vacstatus,by = c("host_id","
 
 inf.vac.60vac$exposure <- exposure.function(inf.vac.60vac)
 saveRDS(inf.vac.60vac, "./output/inf.vac.60vac.RDS")
-inf.vac.60vac<-readRDS( "./output/inf.vac.60vac.RDS")
+inf.vac.60vac<-readRDS( "./output/report/inf.vac.60vac.RDS")
 
 exposure.60vaccin.tot <- inf.vac.60vac%>%reframe(.by = run,
                                                     tot.exposure = sum(exposure))
@@ -238,7 +238,7 @@ infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
 inf.vac.clinprot<- left_join(infectious.periods,joined.vacstatus,by = c("host_id","run"))
 inf.vac.clinprot$exposure<- exposure.function(inf.vac.clinprot)
 saveRDS(inf.vac.clinprot, "./output/inf.vac.clinprot.RDS")
-inf.vac.clinprot<-readRDS( "./output/inf.vac.clinprot.RDS")
+inf.vac.clinprot<-readRDS( "./output/report/inf.vac.clinprot.RDS")
 
 exposure.clinprot.tot <- inf.vac.clinprot%>%reframe(.by = run,
                                                    tot.exposure = sum(exposure))
@@ -307,7 +307,7 @@ inf.vac.wane<- left_join(inf.vac.wane,intro.times.run.id,by = c("host_id","run")
 
 inf.vac.wane$exposure<- exposure.function(inf.vac.wane) 
 saveRDS(inf.vac.wane, "./output/inf.vac.wane.RDS")
-inf.vac.wane<-readRDS( "./output/inf.vac.wane.RDS")
+inf.vac.wane<-readRDS( "./output/report/inf.vac.wane.RDS")
 
 exposure.wane.tot <- inf.vac.wane%>%reframe(.by = run,
                                                     tot.exposure = sum(exposure))
@@ -372,7 +372,7 @@ inf.vac.wane.ds$exposure<- exposure.function(inf.vac.wane.ds)
 #replace negative numbers
 inf.vac.wane.ds$exposure[inf.vac.wane.ds$exposure<100]<- 100
 saveRDS(inf.vac.wane.ds, "./output/inf.vac.wane.ds.RDS")
-inf.vac.wane.ds<-readRDS( "./output/inf.vac.wane.ds.RDS")
+inf.vac.wane.ds<-readRDS( "./output/report/inf.vac.wane.ds.RDS")
 
 
 exposure.wane.ds.tot <- inf.vac.wane.ds%>%reframe(.by = run,
@@ -383,12 +383,12 @@ exposure.wane.ds.tot <- inf.vac.wane.ds%>%reframe(.by = run,
 # Combine SCENARIOS                                        #
 ############################################################
 
-#summary plots for HDPA ###
-infected_over_time_runs.scenarios<- rbind(cbind(readRDS(file = "./output/infected_over_time_runs_novaccination_hdpa.RDS"), scenario = "1. Baseline"),
-                                          cbind(readRDS(file = "./output/infected_over_time_runs_clinprot_hdpa.RDS"), scenario = "2. Reduced transmission"),
-                                          cbind(readRDS(file = "./output/infected_over_time_runs_60vaccination_hdpa.RDS"), scenario = "3. Clinical protection"),
-                                          cbind(readRDS(file = "./output/infected_over_time_runs_wane_hdpa.RDS"), scenario = "4. Waning immunity \n homologous"),
-                                          cbind(readRDS(file = "./output/infected_over_time_runs_wane_ds_hdpa.RDS"), scenario = "5. Waning immunity \n heterologous"))
+#summary plots for HDPA ####
+infected_over_time_runs.scenarios<- rbind(cbind(readRDS(file = "./output/report/infected_over_time_runs_novaccination_hdpa.RDS"), scenario = "1. Baseline"),
+                                          cbind(readRDS(file = "./output/report/infected_over_time_runs_clinprot_hdpa.RDS"), scenario = "2. Reduced transmission"),
+                                          cbind(readRDS(file = "./output/report/infected_over_time_runs_60vaccination_hdpa.RDS"), scenario = "3. Clinical protection"),
+                                          cbind(readRDS(file = "./output/report/infected_over_time_runs_wane_hdpa.RDS"), scenario = "4. Waning immunity \n homologous"),
+                                          cbind(readRDS(file = "./output/report/infected_over_time_runs_wane_ds_hdpa.RDS"), scenario = "5. Waning immunity \n heterologous"))
 
 plot.data.scenarios <- infected_over_time_runs.scenarios%>%reframe(.by = c(run,scenario),
                                             Detected = max(C)+max(PC))%>%reshape2::melt(id.vars=c("run","scenario"))
@@ -403,7 +403,7 @@ ggplot(plot.data.scenarios, aes(value))+
 ggsave("./output/figures/InfectedFarmsHPDA.png")
 
 ############################################################
-# Combine human exposure with the no vaccination scenario   #
+# Combine human exposure with the no vaccination scenario #
 ############################################################
 hpda.exposure.total <- rbind(cbind(exposure.novaccin.tot, vac = 0, scenario = "1. Baseline"),
                              cbind(exposure.60vaccin.tot, vac = 0.6, scenario = "2. Reduced transmission"),
@@ -412,6 +412,7 @@ hpda.exposure.total <- rbind(cbind(exposure.novaccin.tot, vac = 0, scenario = "1
                              cbind(exposure.wane.ds.tot, vac = 0.6, scenario = "5. Waning immunity \n heterologous"))
 hpda.exposure.total$ratio <- hpda.exposure.total$tot.exposure/mean.exposure.novaccin
 
+hpda.exposure.total.PASSIVE <- hpda.exposure.total
 # Visualize Human exposure ####
 
 ggplot(hpda.exposure.total, aes(ratio))+ 
@@ -810,11 +811,11 @@ saveRDS(joined.vacstatus, file = "./output/joinedvacstatus_novaccination_hdpa_mi
 Sys.time()-srm
 
 #read saved simulations####
-infected_over_time_runs<- readRDS( file = "./output/infected_over_time_runs_novaccination_hdpa_min.RDS")
-histories <- readRDS(file = "./output/histories_novaccination_hdpa_min.RDS")
-V_stat_matrix <- readRDS(file = "./output/V_stat_matrix_hdpa_min.RDS")
-joined.histories<- readRDS(file = "./output/joinedhistories_novaccination_hdpa_min.RDS")
-joined.vacstatus<- readRDS( file = "./output/joinedvacstatus_novaccination_hdpa_min.RDS")
+infected_over_time_runs<- readRDS( file = "./output/report/infected_over_time_runs_novaccination_hdpa_min.RDS")
+histories <- readRDS(file = "./output/report/histories_novaccination_hdpa_min.RDS")
+V_stat_matrix <- readRDS(file = "./output/report/V_stat_matrix_hdpa_min.RDS")
+joined.histories<- readRDS(file = "./output/report/joinedhistories_novaccination_hdpa_min.RDS")
+joined.vacstatus<- readRDS( file = "./output/report/joinedvacstatus_novaccination_hdpa_min.RDS")
 
 
 
@@ -867,12 +868,15 @@ saveRDS(joined.vacstatus, file = "./output/joinedvacstatus_60vaccination_hpda_mi
 
 Sys.time()-srm
 
-#read saved simulations
-infected_over_time_runs<- readRDS( file = "./output/infected_over_time_runs_60vaccination_hpda_min.RDS")
-histories <- readRDS(file = "./output/histories_60vaccination_hpda_min.RDS")
-V_stat_matrix <- readRDS(file = "./output/V_stat_matrix_60vaccination_hpda_min.RDS")
-joined.histories<- readRDS(file = "./output/joinedhistories_60vaccination_hpda_min.RDS")
-joined.vacstatus<- readRDS( file = "./output/joinedvacstatus_60vaccination_hpda_min.RDS")
+#read saved simulations####
+infected_over_time_runs<- readRDS( file = "./output/report/infected_over_time_runs_60vaccination_hpda_min.RDS")
+histories <- readRDS(file = "./output/report/histories_60vaccination_hpda_min.RDS")
+V_stat_matrix <- readRDS(file = "./output/report/V_stat_matrix_60vaccination_hpda_min.RDS")
+joined.histories<- readRDS(file = "./output/report/joinedhistories_60vaccination_hpda_min.RDS")
+joined.vacstatus<- readRDS( file = "./output/report/joinedvacstatus_60vaccination_hpda_min.RDS")
+
+
+
 
 #calculate infectious period ####
 infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
@@ -897,7 +901,7 @@ Tdist = Tdist.clinprot.min
 fadeout_func = fadeout_func.generic
 exposure.function <- exposure.function.clinprot.min
 
-#sims###
+#sims####
 srm <- Sys.time()
 # vac.func <- function(x){ifelse(x == "LAYER",10^-6 #does not effect pmajor but changes the infectious period
 #                                ,0)} 
@@ -919,11 +923,11 @@ saveRDS(joined.vacstatus,file = "./output/vacstatus_clinprot_hpda_min.RDS")
 Sys.time()-srm
 
 #read saved simulations ####
-infected_over_time_runs<-readRDS( file = "./output/infected_over_time_runs_clinprot_hpda_min.RDS")
-histories<- readRDS(file = "./output/histories_clinprot_hpda_min.RDS")
-V_stat_matrix<- readRDS(file = "./output/V_stat_matrix_clinprot_hpda_min.RDS")
-joined.histories<- readRDS( file = "./output/joined_histories_clinprot_hpda_min.RDS")
-joined.vacstatus <- readRDS(file = "./output/vacstatus_clinprot_hpda_min.RDS")
+infected_over_time_runs<-readRDS( file = "./output/report/infected_over_time_runs_clinprot_hpda_min.RDS")
+histories<- readRDS(file = "./output/report/histories_clinprot_hpda_min.RDS")
+V_stat_matrix<- readRDS(file = "./output/report/V_stat_matrix_clinprot_hpda_min.RDS")
+joined.histories<- readRDS( file = "./output/report/joined_histories_clinprot_hpda_min.RDS")
+joined.vacstatus <- readRDS(file = "./output/report/vacstatus_clinprot_hpda_min.RDS")
 
 
 #length of infectious periods and exposure###
@@ -973,12 +977,12 @@ saveRDS(joined.vacstatus,file = "./output/vacstatus_wane_hpda_min.RDS")
 Sys.time()-srm
 
 #read saved simulations ####
-infected_over_time_runs<-readRDS( file = "./output/infected_over_time_runs_wane_hpda_min.RDS")
-histories<- readRDS(file = "./output/histories_wane_hpda_min.RDS")
-V_stat_matrix<- readRDS(file = "./output/V_stat_matrix_wane_hpda_min.RDS")
-joined.histories<- readRDS( file = "./output/joined_histories_wane_hpda_min.RDS")
-joined.vacstatus <- readRDS(file = "./output/vacstatus_wane_hpda_min.RDS")
-
+infected_over_time_runs<-readRDS( file = "./output/report/infected_over_time_runs_wane_hpda_min.RDS")
+histories<- readRDS(file = "./output/report/histories_wane_hpda_min.RDS")
+V_stat_matrix<- readRDS(file = "./output/report/V_stat_matrix_wane_hpda_min.RDS")
+joined.histories<- readRDS( file = "./output/report/joined_histories_wane_hpda_min.RDS")
+joined.vacstatus <- readRDS(file = "./output/report/vacstatus_wane_hpda_min.RDS")
+Intro_matrix <- readRDS("./output/report/intro_wane_hdpa.RDS")
 
 #length of infectious periods and exposure###
 infectious.periods<- joined.histories%>%reframe(.by = c(run, host_id),
@@ -997,7 +1001,7 @@ for(j in c(1:length(Intro_matrix[,1]))){
   
 }
 inf.vac.wane<- left_join(inf.vac.wane,intro.times.run.id,by = c("host_id","run"))
-
+inf.vac.wane<- left_join(inf.vac.wane,Intro_matrix,by = c("host_id","run"), suffix=c("",".IM"))
 #no fit 
 
 inf.vac.wane$exposure<- exposure.function(inf.vac.wane) 
@@ -1041,12 +1045,12 @@ saveRDS(joined.intro,file = "./output/intro_wane_ds_hpda_min.RDS")
 Sys.time()-srm
 
 #read saved simulations ####
-infected_over_time_runs<-readRDS( file = "./output/infected_over_time_runs_wane_ds_hpda_min.RDS")
-histories<- readRDS(file = "./output/histories_wane_ds_hpda_min.RDS")
-V_stat_matrix<- readRDS(file = "./output/V_stat_matrix_wane_ds_hpda_min.RDS")
-joined.histories<- readRDS( file = "./output/joined_histories_wane_ds_hpda_min.RDS")
-joined.vacstatus <- readRDS(file = "./output/vacstatus_wane_ds_hpda_min.RDS")
-joined.intro<- readRDS(file = "./output/intro_wane_ds_hpda_min.RDS")
+infected_over_time_runs<-readRDS( file = "./output/report/infected_over_time_runs_wane_ds_hpda_min.RDS")
+histories<- readRDS(file = "./output/report/histories_wane_ds_hpda_min.RDS")
+V_stat_matrix<- readRDS(file = "./output/report/V_stat_matrix_wane_ds_hpda_min.RDS")
+joined.histories<- readRDS( file = "./output/report/joined_histories_wane_ds_hpda_min.RDS")
+joined.vacstatus <- readRDS(file = "./output/report/vacstatus_wane_ds_hpda_min.RDS")
+joined.intro<- readRDS(file = "./output/report/intro_wane_ds_hpda_min.RDS")
 
 
 #length of infectious periods and exposure###
@@ -1114,16 +1118,29 @@ ggplot(hpda.exposure.total.min, aes(ratio))+
   theme(legend.position = "none")
 ggsave("./output/figures/ExposureSpatial_min.png", scale = 1.23)
 
+#####################################################################
+#        Active and passive in one plot                             #
+#####################################################################
+hpda.exposure.total$ratio.baseline <- hpda.exposure.total$ratio
 
-ggplot(hpda.exposure.total.min, aes(ratio.baseline))+ 
-  geom_histogram(aes(y =after_stat(count/sum(count))),position = "identity",binwidth = 0.5)+
+hpda.exposure.pas.act <- rbind(cbind(hpda.exposure.total,data.frame(surveillance = "passive")),
+                               cbind(hpda.exposure.total.min,data.frame(surveillance = "both")))
+
+
+ggplot(hpda.exposure.pas.act, aes(ratio.baseline))+ 
+  geom_histogram(aes(y =after_stat(count/sum(count)), fill = factor(surveillance,levels = c("passive","both"))),
+                 position = "identity",binwidth = 0.5, colour = "black")+
+  scale_fill_manual(name = "Surveillance",
+                    values =c( "passive" = "gray","both" = "red"),
+                    labels =c( "passive" = "Passive","both" = "Active and Passive"))+
   labs(x = "log10 ratio of exposure",y = "Proportion of runs")+
   geom_vline(xintercept = 1)+
   scale_x_log10()+
-  facet_grid(.~scenario)+
+  facet_grid(factor(surveillance,levels = c("passive","both"))~scenario, 
+             labeller = as_labeller(c(sapply(unique(hpda.exposure.pas.act$scenario), function(x){x = x}),"passive" = "Passive","both" = "Active and Passive")))+
   #ggtitle("Exposure during an outbreak of multiple farms")+
-  theme(legend.position = "none")
-ggsave("./output/figures/ExposureSpatial_min_base.png", scale = 1.23)
+  theme(legend.position = "none", text = element_text(size = 30))
+ggsave("./output/figures/ExposureSpatial_PasAct_poster.png", scale = 2.5, width = 30,units = "cm")
 
 
 
