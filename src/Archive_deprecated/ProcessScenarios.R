@@ -95,10 +95,11 @@ q1q2plot <- ggplot(data =q1q2.baseline.layer)+
   scale_y_continuous(breaks = c(0,0.25,0.5,0.75,1),sec.axis = sec_axis(trans = ~., name = "R", breaks = c(0,0.23,1,2,3.39)))+
   theme(axis.title = element_text(size = 40), 
         axis.text = element_text(size = 40),
-        text = element_text(size = 20),
+        text = element_text(size = 40),
         legend.position = "right"
         )
-ggsave("./output/figures/probMinorOutbreakLayer.png" ,q1q2plot, scale = 2, width = 25, units = "cm")
+q1q2plot 
+ggsave("./output/figures/probMinorOutbreakLayer.png" ,q1q2plot, scale = 2, width = 25, units = "cm", dpi = 600)
 
 
 

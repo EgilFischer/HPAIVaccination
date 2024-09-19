@@ -3,9 +3,12 @@ source("./src/loadLibraries.R")
 
 
 #Estimate waning rate ####
-TiterWaning <- read_csv("./input/TiterWaning.csv")
-TiterWaning <- reshape2::melt(TiterWaning,id.vars = c("Time"))
-mod <- lm(value ~ Time * variable, data = TiterWaning)
+TiterWaning <- read_delim("./input/TitreWaningRudolf2010.csv", delim = ";")
+#select single vaccinated 
+TiterWaning<- TiterWaning[is.na(TiterWaning$Time2ndV),]
+TiterWaning <- reshape2::melt(TiterWaning%>%select(TimeWeeks,"PosH5N2","NH5N2","PosH5N1", "NH5N1"),id.vars = c("TimeWeeks"))
+stop("Analysis below should be improved. The variable now includes both positive and total number of birds.")
+mod <- lm(value ~ TimeWeeks * variable, data = TiterWaning)
 drop1(mod)
 mod.uni <- lm(value ~ Time, data = TiterWaning)
 
