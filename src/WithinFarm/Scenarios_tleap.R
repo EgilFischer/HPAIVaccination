@@ -9,8 +9,8 @@
 
 #load libraries
 source("./src/loadLibraries.R") 
-source("./src/postprocesSimulations.R")
-source("./src/multitypetransitionsSEIR_tleap.R")
+source("./src/WithinFarm/postprocesSimulations.R")
+source("./src/WithinFarm/multitypetransitionsSEIR_tleap.R")
 if(!dir.exists("./output")){dir.create("./output")}
 # SCENARIOS #
 #Layers####

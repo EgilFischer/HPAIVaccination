@@ -1,6 +1,6 @@
 #########################################################
 #                                                        
-#                  Deterministic multitype transitions model                                 
+#                  Stochastic multitype transitions model                                 
 #                  
 #                                                        
 #                  Author: Egil Fischer                              
