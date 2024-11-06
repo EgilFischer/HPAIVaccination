@@ -130,7 +130,7 @@ inits.gamma.buildup.wane <-  with(param.list,{
     S0 = round(c(1-p.protect.adjust,p.protect.adjust)*(N0-initial),digits = 0))#initially susceptible
   )});inits.gamma.buildup.wane 
 
-
+#TODO initial values should be within simulator
 
 #function of simulation of spread with an exponentially distributed transition between states
 sim.multitypeSEIR_tleap_expwaning <- function(param.list,init, seed = NULL){
