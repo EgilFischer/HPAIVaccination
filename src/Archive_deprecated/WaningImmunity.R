@@ -141,7 +141,7 @@ with((TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)),
 with((TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)),
      points(TimeWeeks,PosH5N1/NH5N1))
 
-#bayesian fit####
+#bayesian fit
 library(rstan)
 
 scode <- "
@@ -235,35 +235,15 @@ data.fit <- rbind(data.frame(time = seq(0,max(tmp$TimeWeeks*7),1),prob = 1-pgamm
                   data.frame(time = seq(0,max(tmp$TimeWeeks*7),1),prob = .7*(1-pgamma(seq(0,max(tmp$TimeWeeks*7),1),4, 0.1/7)), strain = "H5N1 - heterologous"))
 data.exp <- rbind(data.frame(time = tmp$TimeWeeks*7,prob = tmp$PosH5N2/tmp$NH5N2, strain = "H5N2 - homologous"),
                   data.frame(time = tmp$TimeWeeks*7,prob = tmp$PosH5N1/tmp$NH5N1, strain = "H5N1 - heterologous"))
-ggplot()+ 
-  geom_path(data =data.fit , aes(time, prob,colour = strain, linetype = strain, group = strain), linewidth = 1.5 )+
-  geom_point(data = data.exp, aes(time, prob,colour = strain, shape = strain, group = strain),size = 4)+
-  scale_colour_manual(values = c("H5N2 - homologous"="#F3965E", "H5N1 - heterologous" = "#AA1555"))+
-  #scale_linetype_discrete(values = c("dash",  "solid"))+
+ggplot()+
+  geom_path(data =data.fit , aes(time, prob,colour = strain))+
+  geom_point(data = data.exp, aes(time, prob,colour = strain))+
   labs(x = "Time (days post full vaccination)", y = "Prob. high titre")+
-  ylim(0,NA)
-  # +ggtitle("Prob. of having a high titre")
+  ylim(0,NA)+
+  ggtitle("Prob. of having a high titre")
 ggsave("./output/figures/WaningCurve.png",scale =1.2)
 
-#scale to days 
-tmp <- TitreWaningR%>%filter(VaccinStatus =="BI"&TimeWeeks>3)
-data.fit <- rbind(data.frame(time = seq(0,max(tmp$TimeWeeks*7),1),prob = 1-pgamma(seq(0,max(tmp$TimeWeeks*7),1),36, 0.07), strain = "Homologous"),
-                  data.frame(time = seq(0,max(tmp$TimeWeeks*7),1),prob = .7*(1-pgamma(seq(0,max(tmp$TimeWeeks*7),1),4, 0.1/7)), strain = "Heterologous"))
-data.exp <- rbind(data.frame(time = tmp$TimeWeeks*7,prob = tmp$PosH5N2/tmp$NH5N2, strain = "Homologous"),
-                  data.frame(time = tmp$TimeWeeks*7,prob = tmp$PosH5N1/tmp$NH5N1, strain = "Heterologous"))
-data.exp$Strain = data.exp$strain
-data.fit$Strain = data.fit$strain
 
-ggplot()+ 
-  geom_path(data =data.fit , aes(time, prob,colour = Strain, linetype = Strain, group =Strain), linewidth = 1.5 )+
-  geom_point(data = data.exp, aes(time, prob,colour = Strain, shape = Strain, group = Strain),size = 4)+
-  scale_colour_manual(values = c("Homologous"="#F3965E", "Heterologous" = "#AA1555"))+
-  scale_shape_manual( values = c("Homologous"=15, "Heterologous" = 17))+
- # scale_linetype_discrete(name = "Vaccine strain",labels = c("dash",  "solid"))+
-  labs(x = "Time (days post full vaccination)", y = "Prob. high titre")+
-  ylim(0,NA)
-# +ggtitle("Prob. of having a high titre")
-ggsave("./output/figures/WaningCurve_poster.png",scale =1.2, dpi = 600)
 
 
 test<- rgamma(10000, 36,0.07)

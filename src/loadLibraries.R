@@ -1,5 +1,15 @@
 # loading required libraries ####
-packages <- c("ggplot2","dplyr","tidyverse","readr","rootSolve","readxl","distributionsrd","dbscan","ggh4x")
+packages <- c("ggplot2",
+              "dplyr",
+              "tidyverse",
+              "readr",
+              "rootSolve",
+              "readxl",
+              "distributionsrd",
+              "dbscan",
+              "ggpubr",
+              "mixtools", 
+              "kableExtra")
 
 
 ## Now load or install&load all
@@ -16,9 +26,4 @@ package.check <- lapply(
 # User-defined generic functions ####
 rm.exist <- function(x){
   if(exists(deparse(substitute(x))))rm(x); 
-}
-
-firstup <- function(x) {
-  substr(x, 1, 1) <- toupper(substr(x, 1, 1))
-  x
 }

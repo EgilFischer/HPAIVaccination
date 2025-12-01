@@ -58,20 +58,17 @@ scenario.levels.label.waneDifStrain <- names(scenario.label.waneDifStrain)
 detection.method.label <- c(pas.det.time = "Passive",
                             ac.det.time = "Active",
                             min.det.time = "Minimum")
-detection.method.label_poster<- c(pas.det.time = "Passive",
-                                  ac.det.time = "Active",
-                                  min.det.time = "Passive & Active")
+
 
 
 #Baseline ####
 #load baseline simulations 
-output.baseline.layer <- readRDS("./output/coverage/20231210outputlayerSize15000Vac0.RDS")$out#cbind(load.sims("./output/layerSize32000Vac0")$output)
+output.baseline.layer <- cbind(load.sims("./output/layerSize32000Vac0")$output)
 output.baseline.broiler <- load.sims("./output/broilerSize38000Vac0")$output
 
 #load baseline parameters (assuming all parameter lists are equal within a folder)
-pars.baseline.layer <- readRDS("./output/coverage/20231210outputlayerSize15000Vac0.RDS")$pars#load.sims("./output/layerSize32000Vac0", params = TRUE)$pars[[1]]
+pars.baseline.layer <- load.sims("./output/layerSize32000Vac0", params = TRUE)$pars[[1]]
 pars.baseline.broiler <- load.sims("./output/broilerSize38000Vac0", params = TRUE)$pars[[1]]
-pars.baseline.layer$variance.infectious.period <- pars.baseline.layer$k.infectious/(pars.baseline.layer$k.infectious/pars.baseline.layer$infectious.period)^2
 
 #probability of a major outbreak ####
 q1q2.baseline.layer <- q1q2(pars.baseline.layer)
@@ -80,26 +77,18 @@ threshold <- q1q2.baseline.layer%>%select("p","Rv")%>%filter(Rv<=1)%>%first
 n <- param.list.baseline.layer$initial
 
 q1q2plot <- ggplot(data =q1q2.baseline.layer)+
-  geom_path(aes(p,q1^(n), colour = "Low Titre", linetype = "a"),linewidth = 1.0)+
-  geom_path(aes(p,q2^(n), colour = "High Titre", linetype = "b"),linewidth = 1.0)+
-  geom_path(aes(p, (q1^(n*(1-p))* q2^(n*p)), colour = "Low & High titre ratio", linetype = "c"),linewidth = 1.0)+
-  geom_path(aes(p,Rv, colour = "R", linetype = "d"),linewidth = 1.0)+#, linetype = "dashed")+
+  geom_path(aes(p,q1^(n), colour = "Low Titre"),linewidth = 1.0)+
+  geom_path(aes(p,q2^(n), colour = "High Titre"),linewidth = 1.0)+
+  geom_path(aes(p, (q1^(n*(1-p))* q2^(n*p)), colour = "Low & High titre ratio"),linewidth = 1.0)+
+  geom_path(aes(p,Rv, colour = "R"),linewidth = 1.0, linetype = "dashed")+
   xlab("Proportion with high titre")+
   ylab("Probability of a minor outbreak")+ 
   scale_colour_manual(name = paste("Introduction by",n,"birds"),
                       labels = c("High Titre","High and Low Titre","Low Titre","R"),
                       values = c("red","darkgrey","blue","black"))+
-  scale_linetype_manual(name = paste("Introduction by",n,"birds"),
-                        labels = c("High Titre","High and Low Titre","Low Titre","R"),
-                        values = c("a"="solid","b"="solid","c"="solid","d" = "dashed"))+
-  scale_y_continuous(breaks = c(0,0.25,0.5,0.75,1),sec.axis = sec_axis(trans = ~., name = "R", breaks = c(0,0.23,1,2,3.39)))+
-  theme(axis.title = element_text(size = 40), 
-        axis.text = element_text(size = 40),
-        text = element_text(size = 40),
-        legend.position = "right"
-        )
-q1q2plot 
-ggsave("./output/figures/probMinorOutbreakLayer.png" ,q1q2plot, scale = 2, width = 25, units = "cm", dpi = 600)
+  scale_y_continuous(sec.axis = sec_axis(trans = ~., name = "R"))+
+  theme()
+ggsave("./output/figures/probMinorOutbreakLayer.png" ,q1q2plot, scale = 1.23)
 
 
 
@@ -107,9 +96,9 @@ ggsave("./output/figures/probMinorOutbreakLayer.png" ,q1q2plot, scale = 2, width
 #Layer and Broiler different sizes       #
 ##########################################
 scenarios.tmp <-  data.frame(
-  type = c(rep("layer",3)),#rep("broiler",3)),
-  size = c(15000))#,32000,64000,
-           #20000,38000,73000))
+  type = c(rep("layer",3),rep("broiler",3)),
+  size = c(15000,32000,64000,
+           20000,38000,73000))
 
 scenario.list.size.type <- mapply(FUN = function(type, size){list(data.frame(scenario  = paste0(type,"Size",size,"Vac0")))}, scenarios.tmp$type,scenarios.tmp$size)
 
@@ -185,27 +174,6 @@ ggplot(data = surveillance.size.type%>%
   facet_grid(size~max.time+variable, labeller = labeller(max.time = labels.type, variable = detection.method.label))
 ggsave("./output/figures/scenarios_sizetype_surveillance.png", scale = 1.23)
 
-#for SVEPM poster
-stop()
-ggplot(data = surveillance.size.type%>%filter(size %in% c(15000,32000,64000))%>%
-         select(c("run","rep","size","max.time","scenario","pas.det.time",
-                  #"ac.det.time",
-                  "min.det.time"))%>%
-         reshape2::melt(id.vars = c("run","rep","size","max.time","scenario")) )+
-  geom_histogram(aes(x = as.numeric(value), y=after_stat(count)/sum(after_stat(count)), fill = variable),    colour = "black", 
-                 alpha = 0.5, binwidth = 1.0,position = "identity")+
-  xlim(0,NA)+ylim(0,NA)+
-  scale_fill_manual(values=c(pas.det.time = "black",ac.det.time = "orange",min.det.time= "red"),
-                    labels = c(pas.det.time = "Passive",
-                               #ac.det.time = "Active",
-                               min.det.time= "Passive and Active"), name = "Detection")+
-  xlab("Detection time")+
-  ylab("Proportion of runs")+
-  #ggtitle("Surveillance")+
-  facet_nested(size~variable, labeller = labeller(max.time = labels.type, variable = detection.method.label))
-ggsave("./output/figures/scenarios_sizetype_surveillance_poster.png", scale = 1.23)
-
-
 surveillance.size.type%>%reframe(.by = scenario,
                                  mean = mean(pas.det.time), 
                                  var = var(pas.det.time),
@@ -266,11 +234,6 @@ for(k in c(1:length(output.size.type))){
 saveRDS(humanexposure.size.type, "./output/exposure_sizetype.RDS")
 humanexposure.size.type<- readRDS( "./output/exposure_sizetype.RDS")
 
-ggplot(humanexposure.size.type%>%filter(size  ==32000))+geom_histogram(aes(detection.exposure))+facet_grid(vaccination~detection.method)
-
-#create relative 
-
-
 dists.exposure <- fit.distribution(humanexposure.size.type, long.form = TRUE, scale = 1000,  added.vars = add.vars)
 ggplot(dists.exposure)+geom_point(aes(size, mean, colour = detection.method))+facet_grid(type~.)
 saveRDS(dists.exposure, "./output/exposureDist_sizetype.RDS")
@@ -281,7 +244,7 @@ drop1(fit.pas.mean.sizetype)
 summary(fit.pas.mean.sizetype)
 ggplot()+
   geom_point(aes(size, mean, colour =as.factor(type)),dists.exposure%>%filter(detection.method =="pas.det.time"))+
-  geom_path(aes(size, val), data.frame(size =dists.exposure%>%filter(detection.method =="pas.det.time")%>%select("size"), val =predict(fit.pas.mean.sizetype) ))
+  geom_(aes(size, val), data.frame(size =dists.exposure%>%filter(detection.method =="pas.det.time")%>%select("size"), val =predict(fit.pas.mean.sizetype) ))
 
 
 saveRDS(fit.pas.mean.sizetype, "./output/exposureMean_sizetype_passive.RDS")
@@ -709,7 +672,7 @@ humanexposure.layer.clin$ratio.det <- humanexposure.layer.clin$detection.exposur
 humanexposure.layer.clin$ratio.tot <- humanexposure.layer.clin$total.exposure/humanexposure.layer.clin$mean.tot.exposure
 
 saveRDS(humanexposure.layer.clin, file = "./output/humanexposureLayerClin.RDS")
-humanexposure.layer.clin <- readRDS(file = "./output/report/humanexposureLayerClin.RDS")
+humanexposure.layer.clin <- readRDS(file = "./output/humanexposureLayerClin.RDS")
 dists.clinprot.exposure <- fit.distribution(humanexposure.layer.clin, 
                                             long.form= TRUE, 
                                             long.var = "detection.exposure",
@@ -727,20 +690,6 @@ ggplot(humanexposure.layer.clin) +
                                             detection.method = detection.method.label))
 #+  ggtitle("Human exposure layers")#+theme(legend.position = 'none')
 ggsave("./output/figures/humanexposurelayer_clinprot.png")
-
-ggplot(humanexposure.layer.clin%>%filter(detection.method != "ac.det.time")) +
-  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = detection.method),binwidth = .15,alpha = 0.5,colour = "black",position = "identity")+
-  scale_fill_manual(values=c(pas.det.time = "black",min.det.time= "red",ac.det.time = "orange"),
-                    labels = c(pas.det.time = "Passive",min.det.time= "Passive & Active",ac.det.time = "Active"))+
-  xlab("Risk ratio of exposure \n (reference baseline)") + 
-  ylab("")+
-  lims(x = c(0,3))+
-  geom_vline(xintercept = 1)+
-  facet_grid(scenario~detection.method,labeller = labeller(scenario = scenario.label.clin,
-                                                           detection.method = detection.method.label_poster))
-#+  ggtitle("Human exposure layers")#+theme(legend.position = 'none')
-ggsave("./output/figures/humanexposurelayer_clinprot_poster.png", scale = 1.5)
-
 
 
 
@@ -880,7 +829,7 @@ humanexposure.layer.wane$ratio.det <- humanexposure.layer.wane$detection.exposur
 humanexposure.layer.wane$ratio.tot <- humanexposure.layer.wane$total.exposure/humanexposure.layer.wane$mean.tot.exposure
 
 saveRDS(humanexposure.layer.wane, file = "./output/humanexposureLayerwane.RDS")
-humanexposure.layer.wane<-readRDS(file = "./output/report/humanexposureLayerwane.RDS")
+humanexposure.layer.wane<-readRDS(file = "./output/humanexposureLayerwane.RDS")
 
 humanexposure.layer.wane$scenario <- factor(humanexposure.layer.wane$scenario, levels= scenario.levels.label.wane)
 ggplot(humanexposure.layer.wane) +
@@ -895,20 +844,6 @@ ggplot(humanexposure.layer.wane) +
   #ggtitle("Human exposure layers")+
   theme(legend.position = 'none')
 ggsave("./output/figures/humanexposurelayer_wane.png", dpi = 300, scale = 1.23)
-
-ggplot(humanexposure.layer.wane%>%filter(detection.method != "ac.det.time")) +
-  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = detection.method),binwidth = .15,alpha = 0.5,colour = "black",position = "identity")+
-  scale_fill_manual(values=c(pas.det.time = "black",ac.det.time = "orange",min.det.time= "red"),
-                    labels = c(pas.det.time = "Passive",ac.det.time = "Active",min.det.time= "Passive & Active"))+
-  scale_x_log10(breaks=c(0.0001,0.001,0.01,0.1,0,1))+
-  xlab("Risk ratio of exposure \n (reference baseline)") + 
-  ylab("Proportion")+
-  geom_vline(xintercept = 1)+
-  facet_grid(scenario~detection.method,labeller = labeller(scenario = scenario.label.wane, detection.method = detection.method.label))+
-  #ggtitle("Human exposure layers")+
-  theme(legend.position = 'none')
-ggsave("./output/figures/humanexposurelayer_wane_poster.png", dpi = 300, scale = 1.23)
-
 
 
 #distributions human exposure####
@@ -1153,7 +1088,7 @@ humanexposure.layer.waneDifStrain$ratio.det <- humanexposure.layer.waneDifStrain
 humanexposure.layer.waneDifStrain$ratio.tot <- humanexposure.layer.waneDifStrain$total.exposure/humanexposure.layer.waneDifStrain$mean.tot.exposure
 humanexposure.layer.waneDifStrain$scenario <- factor(humanexposure.layer.waneDifStrain$scenario, levels= scenario.levels.label.waneDifStrain)
 saveRDS(humanexposure.layer.waneDifStrain, file = "./output/humanexposureLayerwaneDifStrain.RDS")
-humanexposure.layer.waneDifStrain<-readRDS(file = "./output/report/humanexposureLayerwaneDifStrain.RDS")
+humanexposure.layer.waneDifStrain<-readRDS(file = "./output/humanexposureLayerwaneDifStrain.RDS")
 
 
 ggplot(humanexposure.layer.waneDifStrain) +
@@ -1170,27 +1105,6 @@ ggplot(humanexposure.layer.waneDifStrain) +
 #  ggtitle("Human exposure layers")+
   theme(legend.position = 'none')
 ggsave("./output/figures/humanexposurelayer_waneDifStrain.png", dpi = 300, scale = 1.23)
-
-
-
-ggplot(humanexposure.layer.waneDifStrain%>%filter(detection.method != "ac.det.time")) +
-  geom_histogram(aes(ratio.det,after_stat(.15*density), fill = detection.method),binwidth = .15,alpha = 0.5,colour = "black",position = "identity")+
-  scale_fill_manual(values=c(pas.det.time = "black",ac.det.time = "orange",min.det.time= "red"),
-                    labels = c(pas.det.time = "Passive",ac.det.time = "Active",min.det.time= "Passive & Active"))+
-  scale_x_log10(breaks=c(0.0001,0.001,0.01,0.1,0,1))+
-  xlab("Risk ratio of exposure \n (reference baseline)") + 
-  ylab("Proportion")+
-  geom_vline(xintercept = 1)+
-  facet_grid(scenario~detection.method,labeller = labeller(scenario = scenario.label.waneDifStrain, detection.method = detection.method.label))+
-  #ggtitle("Human exposure layers")+
-  theme(legend.position = 'none')
-ggsave("./output/figures/humanexposurelayer_waneDifstrain_poster.png", dpi = 300, scale = 1.23)
-
-
-
-
-
-
 
 humanexposure.layer.waneDifStrain$fade.out <-humanexposure.layer.waneDifStrain$phigh >0.5
 
