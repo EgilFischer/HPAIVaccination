@@ -1,16 +1,18 @@
 .Rproj.user
 .Rhistory
 .RData
-.Ruserdata
 .RDS
+.Ruserdata
+input/FieldExperiment/
+PPS_vaccinatie.Rproj
+Report_August25.html
+Report_August25.pdf
 *.RDS
+*.html
 *.png
-*.jpg
-*.tif
-*.xlsx
-/input *
-/output *
-.RDataTmp*
-.RDataTmp*
-.RDataTmp*
+Archive/
+HPC_output/
+Report_Octobre2025_files/
+Report_Octobre2025_sensitivity_analysis.docx
+Report_Octobre2025_sensitivity_analysis.pdf
 
