@@ -9,7 +9,7 @@
 #########################################################
 # Uses code from Probability of a major outbreak (probMajorOutbreak) but simplified to use any k or p.protect input
 
-source("./src/loadLibraries.R") 
+#source("./src/loadLibraries.R") 
 
  itypes = 2;
  param.list.baseline.layer <- list(

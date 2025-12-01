@@ -1,11 +1,18 @@
 ### "Surveillance in a vaccinated poultry population" ####
 # Author e.a.j.fischer@uu.nl 
 
-setwd("C:/Users/fisch106/SurfDrive/Projecten/AI/PPS_vaccinatie/Code/HPAI_vaccination - Copy (2)")
+setwd("C:/Users/fisch106/SurfDrive/Projecten/AI/PPS_vaccinatie/Code/HPAI_vaccination_private_version")
+hpc_directory <- "./HPC_output"
+output.dir.detection <- "./HPC_output/Detection/";
+output.dir.daily_data <- "./HPC_output/DailyData/";
   
 # Source required scripts that load and process the data ####
   
-## libraries and functions ####
+## load / set libraries, functions and labels####
+#run scripts to load required libraries and calculation of probability of a major outbreak
+suppressPackageStartupMessages(source("./src/loadLibraries.R"))
+suppressMessages(source("./src/pmaj_calculation.R"))
+
 #function to calculate clopper-pearson confidence interval
 clopper_pearson <- function(x, n, conf.level = 0.95) {
   alpha <- 1 - conf.level
@@ -20,17 +27,6 @@ okabe_ito <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00",
 #registered symbol
 reg_symbol = "\U00AE"
 
-#set those sections to run. Setting these to false will result in using previous runs of these sections or scripts. This speeds up when processing the data for editing text and figures etc. 
-run_detection_module = FALSE
-run_process_field_experiment = TRUE
-run_combine_daily_data = FALSE
-
-#set directory where outputs are stored and run scripts to load required libraries and calculation of probability of a major outbreak
-hpc_directory <- "C:/Users/fisch106/surfdrive/Projecten/AI/PPS_vaccinatie/Code/HPAI_vaccination/HPC_output"
-suppressPackageStartupMessages(source("./src/loadLibraries.R"))
-suppressMessages(source("./src/pmaj_calculation.R"))
-
-
 #labels
 ceva_labels <- c('CEVA' = paste0("VECTORMUNE",reg_symbol),
                  'NOVAC' = "No vaccination",
@@ -40,10 +36,28 @@ bi_labels <- c('BI' = "VAXXITEK HVT + IBD + H5",
                'NOVAC' = "No vaccination",
                'Neg_controle BI' = "Control group")
 
+
+
+
+#####################################
 ## run analyses or load analysis ####
+#####################################
+
+#set those sections to run. Setting these to false will result in using previous runs of these sections or scripts. This speeds up when processing the data for editing text and figures etc. 
+run_detection_module = FALSE
+run_process_field_experiment = TRUE
+run_combine_daily_data = FALSE
+
+#process field experiment ####
 if(run_process_field_experiment){
   suppressMessages(source("./src/ProcessFieldExperiment.R"))
 }
+
+#load data of field experiment ####
+data_field_study_cut_offs <- readRDS("./input/FieldExperiment/Processed_Data/data_field_study_cut_offs.RDS")
+
+
+# detection module ####
 if(run_detection_module){ #change to FALSE to prevent running this code
   #run analysis
   suppressMessages(source("./src/pre_processing_detModule.R"))
@@ -51,14 +65,11 @@ if(run_detection_module){ #change to FALSE to prevent running this code
 }
 
 
-## load the simulations ####
-  
-#choose to load previously combined data set or not
-output.dir <- "./HPC_output/DailyData/";
 
+## load the simulations ####
 if(!run_combine_daily_data){
   # Load the data
-  file.list <- list.files(output.dir, pattern = "DailyData.*\\.RDS$", full.names = TRUE);
+  file.list <- list.files(output.dir.daily_data, pattern = "DailyData.*\\.RDS$", full.names = TRUE);
   all_scenarios_sim <- NULL
   for(i in 1:length(file.list)){
     #create one data.frame
@@ -76,15 +87,13 @@ if(!run_combine_daily_data){
   all_scenarios_sim$Treatment <- str_replace(all_scenarios_sim$Treatment, "BI_","BI")
   
   all_scenarios_sim <- all_scenarios_sim%>%mutate(production_phase = ifelse(time_point<120,"preproduction","production"))
-  saveRDS(all_scenarios_sim,file = paste0(output.dir, "/Combined/Combined_DailyData.RDS"))
-}else
-{
+  saveRDS(all_scenarios_sim,file = paste0(output.dir.daily_data, "/Combined/Combined_DailyData.RDS"))
+}else{
   # Load the data
-  all_scenarios_sim <-readRDS(file = paste0(output.dir, "/Combined/Combined_DailyData.RDS"))
+  all_scenarios_sim <-readRDS(file = paste0(output.dir.daily_data, "/Combined/Combined_DailyData.RDS"))
 }
 
-# get the parameters for use in the report 
-# get the values of transmission parameters of all the treatments
+# get the values of transmission parameters of all the treatments ####
 all_files <- data.frame(files = unlist(list.files(hpc_directory, include.dirs = FALSE)))%>%filter(str_detect(files,pattern = "Farm"))
 all_files_selection <- data.frame(files = all_files$files,
                                   Treatment = str_extract(all_files$files, "NOVAC|CEVA|BI|BIBOOSTER"),
@@ -92,6 +101,7 @@ all_files_selection <- data.frame(files = all_files$files,
   reframe(
     .by = c(Treatment, cut_off),
     file = sample(files,1))
+
 #get parameters from file 
 get_parameters_from_file <- function(file_name, path = NULL, parameter = NULL, index = NULL){
   tmp_pars <- readRDS(paste0(path,"/",file_name))$pars
@@ -207,8 +217,7 @@ scenarios_sim <- all_scenarios_sim%>%filter(cut_off %in% c("O6","NOVAC"))
 scenarios_sim_sensitivity <- all_scenarios_sim%>%filter(cut_off %in% c("O6","NOVAC"))
 
 #detection results####
-output.dir <- "./HPC_output/Detection/";
-S1.results_all <- readRDS(list.files(output.dir, pattern = "*_Detection_results_complete_EU*\\.RDS$", full.names = TRUE));
+S1.results_all <- readRDS(list.files(output.dir.detection, pattern = "*_Detection_results_complete_EU*\\.RDS$", full.names = TRUE));
 #split scenario in farm type and treatment
 S1.results_all <- S1.results_all %>%
   mutate(farm = str_extract(scenario,c("Farm_A|Farm_B")),
@@ -266,8 +275,17 @@ S1.results.sensitivity <- S1.results_all%>%filter(cut_off %in% c("O5","O7","NOVA
 S1.results <- S1.results_all%>%filter(cut_off %in% c("O6","NOVAC"))
 
 
-#"Transmission parameters from transmission experiments used in this study. For BI and BIBOOSTER the same values are used. All scenarios are run with the values for cut-off >=6. ", echo = FALSE, include = TRUE} ####
-suppressMessages(knitr::kable(x= input_table %>%filter(cut_off %in% c("-","O6"))%>%select(!cut_off)%>%select(!cutoff_name),
+#################################################################################################
+#  create tables and figure with the inputs in, the outputs of the simulations and calculations #
+#################################################################################################
+
+#input-tables ####
+
+#Transmission parameters from transmission experiments used in this study. For BI and BIBOOSTER the same values are used. All scenarios are run with the values for cut-off >=6.  
+suppressMessages(knitr::kable(x= input_table %>%
+                                filter(cut_off %in% c("-","O6"))%>%
+                                select(!cut_off)%>%
+                                select(!cutoff_name),
  # mutate(cut_off = factor(cut_off, levels = c("-", "O6","O5", "O7"))) %>%
   #arrange(cut_off)%>%select(!cut_off), 
   #format = "html", 
@@ -293,12 +311,12 @@ suppressMessages(knitr::kable(x= input_table_R%>%select(!cut_off ),
 
 #### Proportion high titre ####
 
-#load data of field experiment
-data_field_study_cut_offs <- readRDS("./input/FieldExperiment/Processed_Data/data_field_study_cut_offs.RDS")
+#times <- seq( 0,588,1) # remove redundatn?
 
-times <- seq( 0,588,1)
-
-plot_field_data <- data_field_study_cut_offs%>%filter(!str_detect(Treatment, "Neg. controle"))%>%pivot_longer(cols = starts_with("O"), names_to = "cut_off")%>%mutate(cut_off = factor(cut_off, levels = c("O6","O5","O7")))%>%arrange(cut_off)
+plot_field_data <- data_field_study_cut_offs%>%
+  filter(!str_detect(Treatment, "Neg. controle"))%>%
+  pivot_longer(cols = starts_with("O"), names_to = "cut_off")%>%
+  mutate(cut_off = factor(cut_off, levels = c("O6","O5","O7")))%>%arrange(cut_off)
 
 ##### CEVA
 
@@ -332,7 +350,7 @@ suppressMessages(ggsave("./figures/buildup_bi_6.png"))
 ### Parameters for consequences
 #"Egg production curve with in black normal curve and red line non-disfigured alive eggs produced by infected birds."}
 #Egg : Flock production function governing percentage of birds laying eggs per day at time t
-    flock_production <- function(t, age_at_d0, eh) {
+flock_production <- function(t, age_at_d0, eh) {
       t_shift <- (t + age_at_d0)/7 #function assumes week 0 = birth, model uses day 0 = first day of maturity
       a <- 103
       b <- 0.0016
@@ -375,7 +393,6 @@ ggplot(pmajor_scenarios%>%filter(time_point>=120)%>%filter(!str_detect(Treatment
   scale_colour_discrete(labels = ceva_labels)+
   scale_shape_discrete(labels = list('A' = "Farm A", 'B' = "Farm B"))+
   labs(x = "Sample time (days)", y = expression(italic(R[v])))+
-  #geom_vline(aes(xintercept = 120))+
   geom_hline(aes(yintercept =1), linetype = "dashed")+
   theme_minimal()+
   theme(legend.title = element_blank())
@@ -384,10 +401,9 @@ ggplot(pmajor_scenarios%>%filter(time_point>=120)%>%filter(!str_detect(Treatment
 suppressMessages(ggsave("./figures/R_ceva.png"))
 
 
-
-average_pmajor_scenarios_crit%>%filter(!str_detect(Treatment,"BI"))%>%select(1,2,4,6,3,5,7) %>%knitr::kable(digits =2, 
-                                                                      #format = "html",
-                                                                      caption = "Fraction and 95%-confidence interval of time points with a proportion high titre above the critical fraction during the preproducton phase (age below 120 days) and during production phase (age above 120 days).", col.names = c("Vaccination","preproduction", "2.5%", "97.5%","production", "2.5%", "97.5%"))
+average_pmajor_scenarios_crit%>%filter(!str_detect(Treatment,"BI"))%>%
+  select(1,2,4,6,3,5,7) %>%
+  knitr::kable(digits =2, caption = "Fraction and 95%-confidence interval of time points with a proportion high titre above the critical fraction during the preproducton phase (age below 120 days) and during production phase (age above 120 days).", col.names = c("Vaccination","preproduction", "2.5%", "97.5%","production", "2.5%", "97.5%"))
 
 
 ### BI
@@ -415,6 +431,9 @@ average_pmajor_scenarios_crit%>%filter(!str_detect(Treatment,"CEVA"))%>%select(1
 ## Detection probability, detection time and consequences when detected
 ## Outbreak sizes after introduction of one randomly selected infectious bird
 
+# Proportion of runs resulting in negligible outbreaks
+small_outbreaks
+
 ### CEVA
 # "Final size distributions per production phase (before/after age 120 days) and vaccination without detection."}
 x_bins = 25;
@@ -424,23 +443,6 @@ ggplot(S1.results%>%filter(!str_detect(Treatment, "BI")))+
   ylim(0,1)+
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))+
   facet_grid(production_phase~Treatment, scales = "free")
-
-
-#To do get these value
-# Vaccination leads to a larger proportion of small outbreaks (less than
-# 0.1% of the flock). For unvaccinated flocks, this was
-# `r small_outbreaks[small_outbreaks$Treatment == "NOVAC",]$fraction_small[1]`.
-# In the preproduction phase this changes to values between
-# `r min(small_outbreaks[small_outbreaks$Treatment != "NOVAC" & small_outbreaks$production_phase == "preproduction","fraction_small"]%>%filter(!str_detect(Treatment, "BI")))`
-# and
-# `r max(small_outbreaks[small_outbreaks$Treatment != "NOVAC" & small_outbreaks$production_phase == "preproduction","fraction_small"]%>%filter(!str_detect(Treatment, "BI")))`.In
-# the production phase this changes to values between
-# `r min(small_outbreaks[small_outbreaks$Treatment != "NOVAC" & small_outbreaks$production_phase == "production","fraction_small"]%>%filter(!str_detect(Treatment, "BI")))`
-# and
-# `r max(small_outbreaks[small_outbreaks$Treatment != "NOVAC" & small_outbreaks$production_phase == "production","fraction_small"]%>%filter(!str_detect(Treatment, "BI")))`.
-
-
-
 
 ### BI
 #The final size is the fraction of the total population infected during the entire course of the outbreak if it is not controlled.
@@ -454,19 +456,6 @@ ggplot(S1.results%>%filter(!str_detect(Treatment, "CEVA")))+
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))+
   facet_grid(production_phase~Treatment, scales = "free")
 
- 
-# Vaccination leads to a larger proportion of small outbreaks (less than
-# 0.1% of the flock). For unvaccinated flocks, this was
-# `r small_outbreaks[small_outbreaks$Treatment == "NOVAC",]$fraction_small[1]`.
-# In the preproduction phase this changes to values between
-# `r min(small_outbreaks[small_outbreaks$Treatment != "NOVAC" & small_outbreaks$production_phase == "preproduction","fraction_small"]%>%filter(!str_detect(Treatment, "CEVA")))`
-# and
-# `r max(small_outbreaks[small_outbreaks$Treatment != "NOVAC" & !str_detect(small_outbreaks$Treatment, "CEVA") & small_outbreaks$production_phase == "preproduction","fraction_small"])`.In
-# the production phase this changes to values between
-# `r min(small_outbreaks[small_outbreaks$Treatment != "NOVAC" & small_outbreaks$production_phase == "production","fraction_small"]%>%filter(!str_detect(Treatment, "CEVA")))`
-# and
-# `r max(small_outbreaks[small_outbreaks$Treatment != "NOVAC" & small_outbreaks$production_phase == "production","fraction_small"]%>%filter(!str_detect(Treatment, "CEVA")))`.
-# 
 
 
 ## Detection results ####
