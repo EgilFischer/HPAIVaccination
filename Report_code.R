@@ -216,7 +216,7 @@ all_scenarios_sim<-(left_join(all_scenarios_sim,pmajor_scenarios%>%mutate(Treatm
 scenarios_sim <- all_scenarios_sim%>%filter(cut_off %in% c("O6","NOVAC"))
 scenarios_sim_sensitivity <- all_scenarios_sim%>%filter(cut_off %in% c("O6","NOVAC"))
 
-#detection results####
+#get the detection results####
 S1.results_all <- readRDS(list.files(output.dir.detection, pattern = "*_Detection_results_complete_EU*\\.RDS$", full.names = TRUE));
 #split scenario in farm type and treatment
 S1.results_all <- S1.results_all %>%
@@ -243,7 +243,9 @@ S1.results_all$detect.Egg_I_shipped <-S1.results_all$detect.Egg_I_shipped /0.57
 
 # get the fraction of small outbreaks
 small_outbreaks <- S1.results_all%>%reframe(.by = c(Treatment, production_phase),
-                                            fraction_small = sum(final.size<= 0.001*46000)/n())
+                                            fraction_small = sum(final.size<= 0.001*46000)/n(),
+                                            n_small = sum(final.size<= 0.001*46000)/n(),
+                                            n_total  = n())
 
 
 S1.results_all <- S1.results_all %>%
@@ -275,38 +277,55 @@ S1.results.sensitivity <- S1.results_all%>%filter(cut_off %in% c("O5","O7","NOVA
 S1.results <- S1.results_all%>%filter(cut_off %in% c("O6","NOVAC"))
 
 
+
 #################################################################################################
 #  create tables and figure with the inputs in, the outputs of the simulations and calculations #
 #################################################################################################
 
-#input-tables ####
-
-#Transmission parameters from transmission experiments used in this study. For BI and BIBOOSTER the same values are used. All scenarios are run with the values for cut-off >=6.  
-suppressMessages(knitr::kable(x= input_table %>%
-                                filter(cut_off %in% c("-","O6"))%>%
-                                select(!cut_off)%>%
-                                select(!cutoff_name),
- # mutate(cut_off = factor(cut_off, levels = c("-", "O6","O5", "O7"))) %>%
-  #arrange(cut_off)%>%select(!cut_off), 
-  #format = "html", 
-  escape= FALSE,col.names = c("Vaccination","$\\beta_{low titre}$","Mean inf. per","2.5%","97.5%","$\\beta_{high titre}$","Mean inf. per","2.5%","97.5%")))
-
-# Reproduction numbers from transmission experiments used in this study. For BI and BIBOOSTER the same values are used."}
-# Create a data frame for the transmission coefficients from parameter list
-#create input to the table - check with input!
-input_table_R <- with(all_files_selection,{data.frame(
+#Input-tables as in report ####
+input_table_beta_T_k_R <- with(all_files_selection,{data.frame(
   Treatment = Treatment,
   cut_off = replace_na(cut_off,"-"),
   cutoff_name = replace_na(str_replace(cut_off,pattern = "O", replacement = " &gt;= "),"&#45;"),
-  beta_low_titre = beta_low_titre * Tinf_low_titre,
-  beta_high_titre = beta_high_titre *  Tinf_high_titre
+  beta_low_titre = beta_low_titre,
+  Tinf_low_titre =Tinf_low_titre,
+  k_Tinf_low_titre =k_Tinf_low_titre,
+  R_low_titre = beta_low_titre * Tinf_low_titre,
+  beta_low_titre = beta_high_titre,
+  Tinf_low_titre =Tinf_high_titre,
+  k_Tinf_low_titre =k_Tinf_high_titre,
+  R_high_titre = beta_high_titre *  Tinf_high_titre
   
 )})%>%mutate(cut_off = factor(cut_off,levels = c("-", "O6","O5", "O7")))%>%arrange(cut_off)
-row.names(input_table_R)<-NULL;
-#create a knitr table 
-suppressMessages(knitr::kable(x= input_table_R%>%select(!cut_off ), 
-                              #format = "html",
-                              digits = 2, escape= FALSE,col.names = c("Vaccination","cut-off","$R_{low titre}$","$R_{high titre}$")))
+row.names(input_table_beta_T_k_R)<-NULL;
+
+
+#CEVA
+#Transmission parameters from transmission experiments used in this study.  All scenarios are run with the values for cut-off >=6.  
+suppressMessages(knitr::kable(x= input_table_beta_T_k_R %>% filter(Treatment != "BI")%>%
+                                filter(cut_off %in% c("-","O6"))%>%
+                                select(!cutoff_name),
+  escape= FALSE,col.names = c("Vaccination","cut-off", "$\\beta_{low titre}$","Mean inf. per","k","R_low","$\\beta_{high titre}$","Mean inf. per","k","R_high")))
+
+#for sensitivity
+suppressMessages(knitr::kable(x= input_table_beta_T_k_R %>% filter(Treatment != "BI")%>%
+                              #  filter(cut_off %in% c("-","O6"))%>%
+                                select(!cutoff_name),
+                              escape= FALSE,col.names = c("Vaccination","cut-off", "$\\beta_{low titre}$","Mean inf. per","k","R_low","$\\beta_{high titre}$","Mean inf. per","k","R_high")))
+
+
+#BI
+#Transmission parameters from transmission experiments used in this study.  All scenarios are run with the values for cut-off >=6.  
+suppressMessages(knitr::kable(x= input_table_beta_T_k_R %>% filter(Treatment != "CEVA")%>%
+                                filter(cut_off %in% c("-","O6"))%>%
+                                select(!cutoff_name),
+                              escape= FALSE,col.names = c("Vaccination","cut-off", "$\\beta_{low titre}$","Mean inf. per","k","R_low","$\\beta_{high titre}$","Mean inf. per","k","R_high")))
+
+#for sensitivity
+suppressMessages(knitr::kable(x= input_table_beta_T_k_R %>% filter(Treatment != "CEVA")%>%
+                                #  filter(cut_off %in% c("-","O6"))%>%
+                                select(!cutoff_name),
+                              escape= FALSE,col.names = c("Vaccination","cut-off", "$\\beta_{low titre}$","Mean inf. per","k","R_low","$\\beta_{high titre}$","Mean inf. per","k","R_high")))
 
 
 #### Proportion high titre ####
@@ -368,7 +387,7 @@ ggplot(aes(t), data = data.frame(t = seq(0, 19*30,0.1)))+
 
 suppressMessages(ggsave("./figures/eggproductioncurve.png"))
 
-## Detection modules
+
 
 # Results ####
 
@@ -381,7 +400,18 @@ pmajor_scenarios_crit <- pmajor_scenarios%>%mutate(production_phase = ifelse(tim
 average_pmajor_scenarios_crit<- pmajor_scenarios_crit%>%filter(cut_off == "O6")%>%reframe(.by = c(Treatment, production_phase),
                            prop_above = sum(above_pc)/n(),
                            prop_above_ll = clopper_pearson( sum(above_pc),n())[1],
-                           prop_above_ul  = clopper_pearson( sum(above_pc),n())[2])%>%pivot_wider(names_from = production_phase, values_from = c(prop_above,prop_above_ll,prop_above_ul))
+                           prop_above_ul  = clopper_pearson( sum(above_pc),n())[2],
+                           n_above = sum(above_pc),
+                           n_total = n()  )%>%
+  pivot_wider(names_from = production_phase, values_from = c(prop_above,prop_above_ll,prop_above_ul, n_above, n_total, mean_reduction, min_reduction, max_reduction))
+
+reduction_R <- pmajor_scenarios_crit%>%filter(cut_off == "O6")%>%reframe(.by = c(Treatment, production_phase, above_pc),
+                                                                         meanR0 = mean(R0),
+                                                                         meanRv = mean(Rv),
+                                                                         mean_reduction = 100*mean(1 -(Rv/R0)),
+                                                                         min_reduction = 100*min(1- (Rv/R0)),
+                                                                         max_reduction = 100*max(1 - (Rv/R0)),
+                                                                         sample_times = n())
 
 
 ### CEVA
@@ -402,8 +432,17 @@ suppressMessages(ggsave("./figures/R_ceva.png"))
 
 
 average_pmajor_scenarios_crit%>%filter(!str_detect(Treatment,"BI"))%>%
-  select(1,2,4,6,3,5,7) %>%
-  knitr::kable(digits =2, caption = "Fraction and 95%-confidence interval of time points with a proportion high titre above the critical fraction during the preproducton phase (age below 120 days) and during production phase (age above 120 days).", col.names = c("Vaccination","preproduction", "2.5%", "97.5%","production", "2.5%", "97.5%"))
+  select(1,3,5,7) %>%
+  knitr::kable(digits =2, caption = "Fraction and 95%-confidence interval of time points with a proportion high titre above the critical fraction  during production phase (age above 120 days).", col.names = c("Vaccination","production", "2.5%", "97.5%"))
+
+reduction_R%>%filter(!str_detect(Treatment,"BI") & production_phase == "production")%>%
+  #select(1,3,5,7) %>%
+  knitr::kable(digits =2, 
+               caption = "Reduction of R.")
+# Proportion of runs resulting in negligible outbreaks
+small_outbreaks%>%filter(!str_detect(Treatment,"BI"))%>%
+  knitr::kable(digits =2, 
+               caption = "Proportion of introduction with negligible spread (i.e. <= 0.1% of farm).")
 
 
 ### BI
@@ -422,44 +461,28 @@ ggplot(pmajor_scenarios%>%filter(time_point>=120)%>%filter(!str_detect(Treatment
 
 suppressMessages(ggsave("./figures/R_BI.png"))
 
+average_pmajor_scenarios_crit%>%filter(!str_detect(Treatment,"CEVA"))%>%
+  select(1,3,5,7) %>%
+  knitr::kable(digits =2, caption = "Fraction and 95%-confidence interval of time points with a proportion high titre above the critical fraction  during production phase (age above 120 days).", col.names = c("Vaccination","production", "2.5%", "97.5%"))
 
-average_pmajor_scenarios_crit%>%filter(!str_detect(Treatment,"CEVA"))%>%select(1,2,4,6,3,5,7) %>%knitr::kable(digits =2, 
-                                                                      #format = "html",
-                                                                      caption = "Fraction and 95%-confidence interval of time points with a proportion high titre above the critical fraction during the preproducton phase (age below 120 days) and during production phase (age above 120 days).", col.names = c("Vaccination","preproduction", "2.5%", "97.5%","production", "2.5%", "97.5%"))
-
-
-## Detection probability, detection time and consequences when detected
-## Outbreak sizes after introduction of one randomly selected infectious bird
+reduction_R%>%filter(!str_detect(Treatment,"CEVA") & production_phase == "production")%>%
+  #select(1,3,5,7) %>%
+  knitr::kable(digits =2, 
+               caption = "Reduction of R.")
 
 # Proportion of runs resulting in negligible outbreaks
-small_outbreaks
+small_outbreaks%>%filter(!str_detect(Treatment,"CEVA"))%>%
+  knitr::kable(digits =2, 
+               caption = "Proportion of introduction with negligible spread (i.e. <= 0.1% of farm).")
 
-### CEVA
-# "Final size distributions per production phase (before/after age 120 days) and vaccination without detection."}
-x_bins = 25;
-ggplot(S1.results%>%filter(!str_detect(Treatment, "BI")))+
-  geom_histogram(aes((final.size-1)/46000, after_stat(density/x_bins)),bins = x_bins)+
-  labs(x = "Fraction population infected during outbreak","Simulation count")+
-  ylim(0,1)+
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))+
-  facet_grid(production_phase~Treatment, scales = "free")
 
-### BI
-#The final size is the fraction of the total population infected during the entire course of the outbreak if it is not controlled.
-
-# "Final size distributions per production phase (before/after age 120 days) and vaccination without detection."}
-x_bins = 25;
-ggplot(S1.results%>%filter(!str_detect(Treatment, "CEVA")))+
-  geom_histogram(aes((final.size-1)/46000, after_stat(density/x_bins)),bins = x_bins)+
-  labs(x = "Fraction population infected during outbreak","Simulation count")+
-  ylim(0,1)+
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))+
-  facet_grid(production_phase~Treatment, scales = "free")
 
 
 
 ## Detection results ####
-
+#choose interval   
+perc_low = 0.25;
+perc_high = 0.75;
 ### Fraction large and small outbreaks detected
 
 #create variable to determine detection  by survey 
@@ -468,7 +491,7 @@ table_data <- S1.results%>%reframe(.by = c(production_phase,Treatment,outbreak.s
   passive = sum(as.numeric(!is.infinite(det.since.intro.pas)))/n(),
   active  = sum(as.numeric(confirm.result == "POSITIVE" | live.confirmation.result == "POSITIVE" )*as.numeric(!is.infinite(det.since.intro.ac)))/n(),
   survey = sum(as.numeric(confirm.survey.result == "POSITIVE" | live.confirmation.survey.result == "POSITIVE")*as.numeric(!is.infinite(det.since.intro.survey)))/n(),
-  missed = sum(missed_nosurvey)/n(),
+  missed = 1 - sum(missed_nosurvey)/n(),
  # missed_nosurvey = missed_nosurvey/n(),
   shortest_passive = sum((det.since.intro.pas<det.since.intro.ac.confirmed) & (det.since.intro.pas<det.since.intro.survey.confirmed), na.rm = TRUE)/n(),
   shortest_active = sum((det.since.intro.pas>det.since.intro.ac.confirmed) & (det.since.intro.ac<det.since.intro.survey.confirmed), na.rm = TRUE)/n(),
@@ -483,9 +506,9 @@ table_data <- S1.results%>%reframe(.by = c(production_phase,Treatment,outbreak.s
                                   shortest_survey))
 
 detection_times_vs_interval <- S1.results%>%filter(outbreak.size.ofconcern == "LARGE" & is.finite(min.det.time))%>%reframe(.by = c(Treatment, production_phase, time.interval.ac),                                                    
-                                                    p1_detection_time = quantile(min.det.time,0.25),
+                                                    p1_detection_time = quantile(min.det.time,perc_low),
                                                     median_detection_time = median(min.det.time),
-                                                    p2_detection_time = quantile(min.det.time,0.75)
+                                                    p2_detection_time = quantile(min.det.time,perc_high)
                                                       )
 
 correct_table_data <- table_data
@@ -504,229 +527,61 @@ for(j in unique(table_data$production_phase))
 size_det_vs_undet <-S1.results%>%reframe(.by = c(production_phase,Treatment,outbreak.size.ofconcern,time.interval.ac,missed),
                                          min_outbreak_size = min(detect.N.dead.detectables + detect.N.live.detectables), #number of dead and live infected at detection.
                                          median_outbreak_size = median(detect.N.dead.detectables + detect.N.live.detectables),
-                                         max_outbreak_size = quantile(detect.N.dead.detectables+ detect.N.live.detectables,0.75))%>%arrange(outbreak.size.ofconcern,Treatment, production_phase, time.interval.ac)
+                                         max_outbreak_size = quantile(detect.N.dead.detectables+ detect.N.live.detectables,perc_high))%>%
+  arrange(outbreak.size.ofconcern,Treatment, production_phase, time.interval.ac)
 
+
+#create range of detection times without vaccination
+det_interval_novac <- detection_times_vs_interval%>%filter(Treatment == "NOVAC" & is.infinite(time.interval.ac ))
+
+
+#consequences
+consequences <- S1.results%>%filter(production_phase == "production")%>%reframe(
+  .by = c(Treatment,  time.interval.ac),
+  fraction_runs_with_transport = sum(detect.Egg_I_shipped>=1,na.rm = TRUE)/n(),
+  median_I_eggs = median(round(detect.Egg_I_shipped[detect.Egg_I_shipped>=1]),na.rm = TRUE), 
+  perc_low_I_eggs = quantile(round(detect.Egg_I_shipped[detect.Egg_I_shipped>=1]),perc_low,na.rm = TRUE),
+  perc_high_I_eggs = quantile(round(detect.Egg_I_shipped[detect.Egg_I_shipped>=1]),perc_high, na.rm = TRUE),
+  median_I_dead = median(round(detect.N.dead.detectables[detect.N.dead.detectables>=1]),na.rm = TRUE), 
+  perc_low_I_dead = quantile(round(detect.N.dead.detectables[detect.N.dead.detectables>=1]),perc_low,na.rm = TRUE),
+  perc_high_I_dead = quantile(round(detect.N.dead.detectables[detect.N.dead.detectables>=1]),perc_high,na.rm = TRUE),
+  median_I_alive = median(round(detect.N.live.detectables[detect.N.live.detectables>=1]),na.rm = TRUE), 
+  perc_low_I_alive = quantile(round(detect.N.live.detectables[detect.N.live.detectables>=1]),perc_low,na.rm = TRUE),
+  perc_high_I_alive = quantile(round(detect.N.live.detectables[detect.N.live.detectables>=1]),perc_high,na.rm = TRUE)
+  )
+
+#combine outcomes to useable table.
+
+output_within_table <- full_join(full_join(correct_table_data%>%filter(production_phase == "production")%>%select(Treatment, time.interval.ac, missed_LARGE), 
+          detection_times_vs_interval%>%filter(production_phase == "production")%>%select(Treatment, time.interval.ac,p1_detection_time, median_detection_time, p2_detection_time)),
+          consequences)
 
 
 
 
 ### CEVA
+ceva_tab_output <- output_within_table%>%
+  filter(!str_detect(Treatment, "BI"))
 
-# size of detected and undetected introduction with a small number of infected birds (<= 0.1% of farm)., echo = FAlSE}
+ceva_tab_output%>%knitr::kable(digits = 2, col.namess = c("Treatment","interval","P-det","l_det_time","med_det_time","h_det_time",
+                                                                                 "frac.with","med I", "l I","h I","med dead","l_dead","h-dead","med live", "l live","h-live"))
 
-ggplot(S1.results%>%filter(outbreak.size.ofconcern == "SMALL")%>% filter(str_detect(Treatment,"CEVA")  ), aes(x = as.factor(time.interval.ac), y =detect.N.dead.detectables + detect.N.live.detectables, fill = !missed ))+geom_boxplot()+scale_fill_manual(values = c("darkblue","darkgreen"),name = "Introduction detected" )+ labs( x = "Active surveillance interval", y = "Total number of infected birds (at fade-out or detection moment)")+facet_grid(Treatment~., scales = "free_y")
-
-suppressWarnings( ggsave("./figures/false_positives_CEVA.png") )
-
-#"Proportion detected large outbreaks (>0.1% flock infected) by passive, active (dead bird i.e. bucket) or live bird survey for different frequencies of active sampleing. Last point is no active sampling.  ", echo = FALSE}
-
-
-ggplot(correct_table_data%>%filter(production_phase == "production")%>%filter(!str_detect(Treatment, "BI"))%>%filter(is.finite(time.interval.ac))) +
-  geom_path(aes(x = time.interval.ac, y = passive_LARGE, color = "Passive")) +
-# geom_point(aes(x = time.interval.ac, y = passive_LARGE, color = "Passive")) +
-#  geom_path(aes(x = time.interval.ac, y = active_LARGE, color = "Active")) +
-  geom_point(aes(x = time.interval.ac, y = active_LARGE, color = "Active"), size = 2) +
-  geom_path(aes(x = time.interval.ac, y = survey_LARGE, color = "Survey")) +
-#  geom_point(aes(x = time.interval.ac, y = survey_LARGE, color = "Survey")) +
-  scale_x_continuous(breaks = unique(detection_times_vs_interval$time.interval.ac)) +
-  labs(x = "Sampling interval", y = "Fraction detected") +
-  scale_color_manual(
-    values = c("Passive" = "black", "Active" = "darkblue", "Survey" = "darkorange"),
-    name = "Detection Method"
-  ) +
-  facet_grid(production_phase ~ Treatment, labeller = as_labeller(ceva_labels))
-
-suppressWarnings( ggsave("./figures/CSe_CEVA.png") )
-
-#create a table
-knitr::kable(correct_table_data%>%filter(production_phase == "production")%>%filter(!str_detect(Treatment, "BI")), digits = 2)
-
-
+sink("output/consequences_ceva.html")
+cat(ceva_tab_output%>%knitr::kable(digits = 2, format = "html", col.namess = c("Treatment","interval","P-det","l_det_time","med_det_time","h_det_time",
+                                                                               "frac.with","med I", "l I","h I","med dead","l_dead","h-dead","med live", "l live","h-live"))
+)
+sink()
 ### BI
+bi_tab_output <- output_within_table%>%
+  filter(!str_detect(Treatment, "CEVA"))
 
-
-#size of detected and undetected introduction with a small number of infected birds (<= 0.1% of farm)., echo=FALSE}
-
-ggplot(S1.results%>%filter(outbreak.size.ofconcern == "SMALL" & str_detect(Treatment,"BI") ), aes(x = as.factor(time.interval.ac), y =detect.N.dead.detectables + detect.N.live.detectables, fill = !missed ))+geom_boxplot()+scale_fill_manual(values = c("darkblue","darkgreen"),name = "Introduction detected" )+facet_grid(Treatment ~.)+ labs( x = "Active surveillance interval", y = "Total number of infected birds (at fade-out or detection moment)")
-
-suppressWarnings( ggsave("./figures/false_positives_BI.png") )
-
-#"Proportion detected large outbreaks (>0.1% flock infected) by passive, active (dead bird i.e. bucket) or live bird survey for different frequencies of active sampleing. Last point is no active sampling.  ", echo = FALSE}
-
-ggplot(correct_table_data%>%filter(production_phase=="production")%>%filter(!str_detect(Treatment, "CEVA"))%>%filter(is.finite(time.interval.ac))) +
-  geom_path(aes(x = time.interval.ac, y = passive_LARGE, color = "Passive")) +
-# geom_point(aes(x = time.interval.ac, y = passive_LARGE, color = "Passive")) +
-#  geom_path(aes(x = time.interval.ac, y = active_LARGE, color = "Active")) +
-  geom_point(aes(x = time.interval.ac, y = active_LARGE, color = "Active"), size = 2) +
-  geom_path(aes(x = time.interval.ac, y = survey_LARGE, color = "Survey")) +
-#  geom_point(aes(x = time.interval.ac, y = survey_LARGE, color = "Survey")) +
-  scale_x_continuous(breaks = unique(detection_times_vs_interval$time.interval.ac)) +
-  labs(x = "Sampling interval", y = "Fraction detected") +
-  scale_color_manual(
-    values = c("Passive" = "black", "Active" = "darkblue", "Survey" = "darkorange"),
-    name = "Detection Method"
-  ) +
-  facet_grid(.~ Treatment, labeller = as_labeller(bi_labels))
-
-suppressWarnings( ggsave("./figures/CSe_BI.png") )
-
-#create a table
-correct_table_data%>%filter(production_phase == "production")%>%filter(!str_detect(Treatment, "CEVA"))
-
-
-### Detection times 
-#The detection times and the variability are higher for vaccinated flocks. Depending on the proportion high titres in the flock (see difference preproduction vs production and different vaccines), the median detection times are similar to unvaccinated flock when every 2 to 14 days carcasses are tested (bucket sampling). Detailed outcomes of every time point are given in the appendix.
-
-#### CEVA
-
-# "Detection times in vaccinated and unvaccinated flocks. Solid line and dots are median values, grey area depicts minimum and maximum range. Detection times without active surveillance for unvaccinated flocks are indicated with dashed lines for median and dotted lines for min-max range."}
-
-
-#create range of detection times without vaccination
-det_interval_novac <- detection_times_vs_interval%>%filter(Treatment == "NOVAC" & is.infinite(time.interval.ac ))
-
-#plot
-ggplot(detection_times_vs_interval%>%filter(production_phase=="production")%>%filter(!str_detect(Treatment,"BI")), aes(x = time.interval.ac))+
-  geom_ribbon(aes(ymin = p1_detection_time, ymax = p2_detection_time), alpha = 0.1)+
-  geom_path(aes(y = median_detection_time))+
-  geom_point(aes(y = median_detection_time))+
-  geom_hline(aes(yintercept = det_interval_novac$p1_detection_time[1]),linetype = "dotted" )+
-  geom_hline(aes(yintercept = det_interval_novac$p2_detection_time[1]),linetype = "dotted") +
-  geom_hline(aes(yintercept = det_interval_novac$median_detection_time[1]),linetype = "dashed")+
-  scale_x_continuous(breaks = unique(detection_times_vs_interval$time.interval.ac) )+
-  facet_grid(production_phase~Treatment, labeller = as_labeller( ceva_labels))+labs(y = "detection time",x = "sampling interval")
-
-suppressWarnings( ggsave("./figures/detection_times_ceva.png") )
-
-
-detection_times_vs_interval%>%filter(production_phase == "production")
-
-# "Detection time distributions of outbreaks > 0.1% of total farm size for passive surveillance only."}
-    ggplot(S1.results%>%filter(outbreak.size.ofconcern == "LARGE" &
-                                 is.finite(pas.det.time))%>%filter(!str_detect(Treatment,"BI")),aes(x =factor(Treatment), y = pas.det.time, fill = Treatment,colour = Treatment))+
-   geom_jitter(alpha = 0.1)+
-   geom_boxplot(colour = "darkgrey", fill = NA,alpha =0.1,outlier.shape = NA)+ 
-  scale_colour_manual(values = okabe_ito[1:2])+
-  stat_summary(
-    fun = median,
-    geom = "point",
-    shape = 18,
-    size = 3,
-    colour = "black",
-    position = position_dodge(width = 0.9)
-  )+  facet_grid(.  ~ production_phase)+ 
-  theme(legend.position = "none")+
-     labs(x = "",y = "Detection time")#+ 
-    # ggtitle("Detection time distribution with passive detection for an outbreak larger than 0.001 of flock.") 
-
-ggsave("./figures/passive_detection_times_ceva.png")
-
-
-# "Fade out times for runs where the introduction is not detected."}
-#for each run get an fade-out time
-fade_out_time <- scenarios_sim%>%filter(L.1+L.2+I.1+I.2 > 0)%>%reframe(.by = c(scenario, run, Treatment, production_phase),
-                                         fade_out_at = max(time))
-# ggplot(fade_out_time)+
-#   geom_histogram(aes(x = fade_out_at, y = after_stat(density), fill = Treatment))+facet_grid(production_phase~.)
-
-#determine undetected runs 
-undetected_runs <- unique(S1.results%>%filter(is.infinite(min.det.time)& outbreak.size.ofconcern=="LARGE")%>%reframe(scenario, run, Treatment, time.interval.ac))
-
-undet_fade_out_time<- fade_out_time%>%semi_join(y = undetected_runs,by = c("scenario","run","Treatment"))
-
-undet_fade_out_time <- left_join(undet_fade_out_time,undetected_runs)%>%mutate(right_censor = as.numeric(fade_out_at>=89))
-
-mean_undet_fade_out_times <- undet_fade_out_time%>%reframe(.by = c("time.interval.ac"),
-                                                           mean_fade_out_time = mean(fade_out_at),
-                                                           var_fade_out_time = var(fade_out_at),
-                                                           )%>%mutate(alpha = mean_fade_out_time^2 /  var_fade_out_time,
-                                                                      beta = mean_fade_out_time /  var_fade_out_time)
-
-plot_data <- mean_undet_fade_out_times %>%
-  mutate(
-    fade_out_at = list(0:90),
-    y = map2(alpha, beta, ~ dgamma(0:90, .x, .y))
-  ) %>%
-  unnest(cols = c(fade_out_at, y))%>%select(time.interval.ac, fade_out_at, y)
-
-ggplot(undet_fade_out_time%>%filter(fade_out_at <= 89)%>%filter(!str_detect(Treatment,"BI")))+
-  geom_histogram(aes(x = fade_out_at, y = after_stat(density), fill = Treatment))+facet_grid(.~is.finite(time.interval.ac))
-
-                                                                                       
-
-#### BI
-
-#"Detection times in vaccinated and unvaccinated flocks. Solid line and dots are median values, grey area depicts minimum and maximum range. Detection times without active surveillance for unvaccinated flocks are indicated with dashed lines for median and dotted lines for min-max range."}
-
-
-#create range of detection times without vaccination
-det_interval_novac <- detection_times_vs_interval%>%filter(Treatment == "NOVAC" & is.infinite(time.interval.ac ))
-
-#plot
-ggplot(detection_times_vs_interval%>%filter(production_phase=="production")%>%filter(!str_detect(Treatment,"CEVA")), aes(x = time.interval.ac))+
-  geom_ribbon(aes(ymin = p1_detection_time, ymax = p2_detection_time), alpha = 0.1)+
-  geom_path(aes(y = median_detection_time))+
-  geom_point(aes(y = median_detection_time))+
-  geom_hline(aes(yintercept = det_interval_novac$p1_detection_time[1]),linetype = "dotted" )+
-  geom_hline(aes(yintercept = det_interval_novac$p2_detection_time[1]),linetype = "dotted") +
-  geom_hline(aes(yintercept = det_interval_novac$median_detection_time[1]),linetype = "dashed")+
-  scale_x_continuous(breaks = unique(detection_times_vs_interval$time.interval.ac) )+
-  facet_grid(.~Treatment, labeller = as_labeller(bi_labels))+labs(y = "detection time",x = "sampling interval")
-suppressWarnings( ggsave("./figures/detection_times_bi.png") )
-
-#"Detection time distributions of outbreaks > 0.1% of total farm size for passive surveillance only."}
-    ggplot(S1.results%>%filter(outbreak.size.ofconcern == "LARGE" &
-                                 is.finite(pas.det.time))%>%filter(!str_detect(Treatment,"CEVA")),aes(x =factor(Treatment), y = pas.det.time, fill = Treatment,colour = Treatment))+
-  geom_jitter(alpha = 0.1)+
-  geom_boxplot(colour = "darkgrey",fill = NA, alpha =0.1,outlier.shape = NA)+ 
-  scale_colour_manual(values = okabe_ito[c(3,4,2)])+
-  scale_fill_manual(values = okabe_ito[c(3,4,2)])+
-  stat_summary(
-    fun = median,
-    geom = "point",
-    shape = 18,
-    size = 3,
-    colour = "black",
-    position = position_dodge(width = 0.9)
-  )+  facet_grid(.  ~ production_phase)+ 
-  theme(legend.position = "none")+
-     labs(x = "",y = "Detection time")#+ 
-    # ggtitle("Detection time distribution with passive detection for an outbreak larger than 0.001 of flock.") 
-
-ggsave("./figures/passive_detection_times_bi.png")
-
-# "Fade out times for runs where the introduction is not detected."}
-#for each run get an fade-out time
-fade_out_time <- scenarios_sim%>%filter(L.1+L.2+I.1+I.2 > 0)%>%reframe(.by = c(scenario, run, Treatment, production_phase),
-                                         fade_out_at = max(time))
-# ggplot(fade_out_time)+
-#   geom_histogram(aes(x = fade_out_at, y = after_stat(density), fill = Treatment))+facet_grid(production_phase~.)
-
-#determine undetected runs 
-undetected_runs <- unique(S1.results%>%filter(is.infinite(min.det.time)& outbreak.size.ofconcern=="LARGE")%>%reframe(scenario, run, Treatment, time.interval.ac))
-
-undet_fade_out_time<- fade_out_time%>%semi_join(y = undetected_runs,by = c("scenario","run","Treatment"))
-
-undet_fade_out_time <- left_join(undet_fade_out_time,undetected_runs)%>%mutate(right_censor = as.numeric(fade_out_at>=89))
-
-mean_undet_fade_out_times <- undet_fade_out_time%>%reframe(.by = c("time.interval.ac"),
-                                                           mean_fade_out_time = mean(fade_out_at),
-                                                           var_fade_out_time = var(fade_out_at),
-                                                           )%>%mutate(alpha = mean_fade_out_time^2 /  var_fade_out_time,
-                                                                      beta = mean_fade_out_time /  var_fade_out_time)
-
-plot_data <- mean_undet_fade_out_times %>%
-  mutate(
-    fade_out_at = list(0:90),
-    y = map2(alpha, beta, ~ dgamma(0:90, .x, .y))
-  ) %>%
-  unnest(cols = c(fade_out_at, y))%>%select(time.interval.ac, fade_out_at, y)
-
-ggplot(undet_fade_out_time%>%filter(fade_out_at <= 89)%>%filter(!str_detect(Treatment,"CEVA")))+
-  geom_histogram(aes(x = fade_out_at, y = after_stat(density), fill = Treatment))+facet_grid(.~is.finite(time.interval.ac))
-
-
-#### distributions for between-farm
+bi_tab_output%>%knitr::kable(digits = 2, col.namess = c("Treatment","interval","P-det","l_det_time","med_det_time","h_det_time",
+                                                                                 "frac.with","med I", "l I","h I","med dead","l_dead","h-dead","med live", "l live","h-live"))
+sink("output/consequences_bi.html")
+cat(bi_tab_output%>%knitr::kable(digits = 2, format = "html", col.namess = c("Treatment","interval","P-det","l_det_time","med_det_time","h_det_time",
+                                                                               "frac.with","med I", "l I","h I","med dead","l_dead","h-dead","med live", "l live","h-live"))
+)
+sink()
 
 
 #input into introduction and between-farm model
@@ -794,402 +649,3 @@ knitr::kable(gamma_distribution%>%filter(str_detect(Treatment, "CEVA"))%>%mutate
 knitr::kable(gamma_distribution%>%filter(str_detect(Treatment, "BI"))%>%mutate(mean = alpha/beta,
                             var = alpha/beta^2), digits = 2)
 
-# ### Epidemic curves
-# 
-# In all three vaccination scenarios both high and low titre birds are infected during a large outbreak.
-# 
-# #
-# scenarios_sim <- scenarios_sim%>%mutate(cumulative_infected = N.total - (S.1 + S.2),
-#                                         cumulative_infected_1 = N.total*(1-p) - S.1,
-#                                         cumulative_infected_2 = N.total*(p) - S.2)
-# 
-# #loop over the detection results 
-# S1.results$cumulative_infected_active = NA;
-# S1.results$cumulative_infected_active_1 = NA;
-# S1.results$cumulative_infected_active_2 = NA;
-# for(i in c(1:length(S1.results$run ))){
-#   mdt <- S1.results$min.det.time[i];
-#   S1.results$cumulative_infected_active[i] = scenarios_sim%>%filter(run == S1.results$run[i] &
-#                        Treatment == S1.results$Treatment[i] &
-#                        intro_time == S1.results$time_point[i] & time <= mdt)%>%
-#     reframe(cumulative_infected_active = last(cumulative_infected))%>%as.numeric();
-#   S1.results$cumulative_infected_active_1[i] = scenarios_sim%>%filter(run == S1.results$run[i] &
-#                        Treatment == S1.results$Treatment[i] &
-#                        intro_time == S1.results$time_point[i] & time <= mdt)%>%
-#     reframe(cumulative_infected_active_1 = last(cumulative_infected_1))%>%as.numeric();
-#   S1.results$cumulative_infected_active_2[i] = scenarios_sim%>%filter(run == S1.results$run[i] &
-#                        Treatment == S1.results$Treatment[i] &
-#                        intro_time == S1.results$time_point[i] & time <= mdt)%>%
-#     reframe(cumulative_infected_active_2 = last(cumulative_infected_2))%>%as.numeric();
-# }
-# 
-# ggplot(S1.results)+geom_histogram(aes(x = cumulative_infected_active))+facet_grid(production_phase ~ Treatment, scales = "free_x")
-# 
-# ggplot(S1.results)+
-#   geom_histogram(aes(x = cumulative_infected_active_1, colour = okabo_ito[7]))+
-#   geom_histogram(aes(x = cumulative_infected_active_2, colour = okabo_ito[6]))+
-#   facet_grid(production_phase ~ Treatment, scales = "free_x")
-# 
-# ```
-# 
-# 
-# <!-- ```{r, echo = FALSE, fig.cap = "Epidemic curves per scenario. I.1 = number of low titre birds, I.2 = number of high titre birds."} -->
-# 
-# <!-- #check runs by visualizing daily data -->
-# 
-# <!-- ggplot(data =scenarios_sim%>%mutate(p_interval = cut(p,breaks = c(-1,0 ,0.1, 0.5, 0.9, 1), -->
-# 
-# <!--   labels = c("0.0","0.0-0.1", "0.1-0.5", "0.5-0.9","0.9-1.0"), -->
-# 
-# <!--   include.lowest = TRUE))%>%select(day, I.1,I.2,Treatment, Farm,production_phase, run,p_interval)%>%pivot_longer(cols = c("I.1","I.2"),names_to = "state", values_to = "I"),  -->
-# 
-# <!-- aes(x = day, y = I, colour = p_interval,group = as.factor(paste(run,p_interval)))) + -->
-# 
-# <!--   geom_path( alpha = 0.1) + -->
-# 
-# <!--   labs(title = paste("Infectious birds"), x = "Day since introduction", y = "Infectious") + -->
-# 
-# <!--   theme_minimal() + -->
-# 
-# <!--   scale_colour_discrete(name = "Proportion high titre")+ -->
-# 
-# <!--   facet_grid(Treatment~ Farm+state+production_phase, scales = "free") +xlim(0,90) -->
-# 
-# <!-- #ggsave(filename = "./figures/epicurveCO6.png") -->
-# 
-# <!-- ``` -->
-# 
-# For detection, incidence curves are more important. In particular, those
-# animals that can be detected when sampling occurs. Therefore, a graph is
-# shown below that presents the cumulative number of dead detectable birds
-# in time.
-# 
-# ```{r echo = FALSE, include = FALSE}
-# #check runs by visualizing daily data
-# n = 2
-# m = 7
-# 
-# get_indices <- function(t, n, m) {
-#   indices <- c()
-#   x <- 0
-#   while (TRUE) {
-#     # Current day and previous n days
-#     current <- t - c(0, 1:(n-1))
-#       # Shifted back by x*m days
-#     shifted <- current - x * m 
-#     # Combine and add to indices
-#     indices <- unique(c(indices, current, shifted))
-#     # Check if all shifted indices are greater than 0
-#     if (all(shifted > 0)) {
-#       x <- x + 1
-#     } else {
-#       break
-#     }
-#   }
-#   # Return only positive indices
-#   return(indices[indices > 0])
-# }
-# 
-# 
-# plot_data_detection_incidence <- scenarios_sim%>%
-#   mutate(.by = c(run,scenario,Farm),
-#     cumulative_dead_detectables_2 = sapply(
-#       day,
-#       function(current_time) {
-#         # Generate a vector with all values that in interval c(current_time - n, current_time) for each value of m*x smaller than current_time
-#         sum(daily.death.incidence.detectables[ get_indices(current_time, n,2)], na.rm = TRUE)
-#         
-#       }
-#     ),
-#     cumulative_dead_detectables_7 = sapply(
-#       day,
-#       function(current_time) {
-#         # Generate a vector with all values that in interval c(current_time - n, current_time) for each value of m*x smaller than current_time
-#         sum(daily.death.incidence.detectables[ get_indices(current_time, n,7)], na.rm = TRUE)
-#         
-#       }
-#     ),
-#     cumulative_dead_detectables_14 = sapply(
-#       day,
-#       function(current_time) {
-#         # Generate a vector with all values that in interval c(current_time - n, current_time) for each value of m*x smaller than current_time
-#         sum(daily.death.incidence.detectables[ get_indices(current_time, n,14)], na.rm = TRUE)
-#         
-#       }
-#     ),
-#     cumulative_dead_detectables_30 = sapply(
-#       day,
-#       function(current_time) {
-#         # Generate a vector with all values that in interval c(current_time - n, current_time) for each value of m*x smaller than current_time
-#         sum(daily.death.incidence.detectables[ get_indices(current_time, n,30)], na.rm = TRUE)
-#         
-#       }
-#     )
-#   )
-# 
-# 
-# 
-# ```
-# 
-# <!-- ```{r, echo = FALSE, fig.cap="Cumulative number of dead detectables. "} -->
-# 
-# <!-- ggplot(plot_data_detection_incidence%>%mutate(introduction_time= as.factor(10*round(intro_time/10))))+ -->
-# 
-# <!--   geom_path(aes(x = time,y = N.dead.detectables, group = paste(run, intro_time)))+ -->
-# 
-# <!--   facet_grid(production_phase  ~ Treatment, scales  = "free" ) -->
-# 
-# <!-- ``` -->
-# #### CEVA
-# 
-# ```{r, echo = FALSE, fig.cap="Cumulative number of dead detectables in the last two days. "}
-# ggplot(plot_data_detection_incidence%>%select(time, starts_with("cumulative_dead_detectables_"), Treatment, production_phase, run,intro_time)%>%pivot_longer(cols = starts_with("cumulative_dead_detectables_"))%>%mutate(interval = str_remove(name, "cumulative_dead_detectables_"))%>%filter(!str_detect(Treatment, "BI")))+
-#   geom_path(aes(x = time,y = value, group =interaction(run, intro_time, interval),
-#                  colour = interval))+
-#                 scale_colour_discrete(type = RColorBrewer::brewer.pal(6, 'Blues')[2:6])+
-#   facet_grid(production_phase ~ Treatment, scales = "free" )#+theme(legen = "Introduction")
-# ```
-# 
-# #### BI
-# ```{r, echo = FALSE, fig.cap="Cumulative number of dead detectables in the last two days. "}
-# ggplot(plot_data_detection_incidence%>%select(time, starts_with("cumulative_dead_detectables_"), Treatment, production_phase, run,intro_time)%>%pivot_longer(cols = starts_with("cumulative_dead_detectables_"))%>%mutate(interval = str_remove(name, "cumulative_dead_detectables_"))%>%filter(!str_detect(Treatment, "CEVA")))+
-#   geom_path(aes(x = time,y = value, group =interaction(run, intro_time, interval),
-#                  colour = interval))+
-#                 scale_colour_discrete(type = RColorBrewer::brewer.pal(6, 'Blues')[2:6])+
-#   facet_grid(production_phase ~ Treatment, scales = "free" )#+theme(legen = "Introduction")
-# ```
-# ## Consequences at detection
-# 
-# ### Infected eggs shipped off premises
-# 
-# Infected eggs could pose a risk for human and animal health. Only when
-# assuming a distinct virus (i.e. less protection) a substantial number of
-# eggs can be shipped before detection.
-# 
-# ```{r tab_tranport_I_eggs, echo = FALSE,include = TRUE}
-# # #visualize results
-# # ggplot(S1.results%>%filter(farm_type == "layer_farm"))+
-# #   geom_histogram(aes(log10(detect.Egg_I_shipped+1),fill = scenario), alpha = 0.5)+
-# #   ggtitle("Eggs shipped before detection")+
-# #   facet_grid(treatment ~ variant, scales = "free_x")
-
-#Table
-tmp_table <- knitr::kable(S1.results%>%reframe(
-  .by = c(Treatment,  time.interval.ac),
-  fraction_runs_with_transport = sum(detect.Egg_I_shipped>=1,na.rm = TRUE)/n(),
-  median_I_eggs = median(round(detect.Egg_I_shipped[detect.Egg_I_shipped>=1]),na.rm = TRUE), 
-  minimum_I_eggs = min(round(detect.Egg_I_shipped[detect.Egg_I_shipped>=1]),na.rm = TRUE),
-  p25_I_eggs = quantile(round(detect.Egg_I_shipped[detect.Egg_I_shipped>=1]),0.25,na.rm = TRUE),
-  p75_I_eggs = quantile(round(detect.Egg_I_shipped[detect.Egg_I_shipped>=1]),0.75, na.rm = TRUE),
-  maximum_I_eggs = max(round(detect.Egg_I_shipped[detect.Egg_I_shipped>=1]),na.rm = TRUE)
-  )
-, digits = 2, 
-#format = "html",
-col.names = c("Vaccine","freq.","Runs with transport of infected eggs", "median","min.","25%","75%" ,"max."),
-caption = "Shipped infected eggs. For the runs with at least 1 transported infected eggs the median, minimum and maximum number of shipped infected eggs.")
-
-#as_image(tmp_table, file = "./figures/tab_shippedIeggs.png")
-
-tmp_table
-
-
-### Number of dead birds that were or are detectable at the moment of detection
-
-
-
-# ggplot(S1.results)+
-#   geom_histogram(aes(detect.N.dead.detectables,fill = scenario), alpha = 0.5)+
-#   ggtitle("Number of dead detectable birds at detection")+
-#   facet_grid(farm_type ~ treatment, scales = "free_x")
-
-#Table
-tmp_table <- knitr::kable(S1.results%>%reframe(
-  .by = c(Treatment, time.interval.ac),
-  median_I_eggs = median(round(detect.N.dead.detectables[detect.N.dead.detectables>=1]),na.rm = TRUE), 
-  minimum_I_eggs = min(round(detect.N.dead.detectables[detect.N.dead.detectables>=1]),na.rm = TRUE),
-  p25_I_eggs = quantile(round(detect.N.dead.detectables[detect.N.dead.detectables>=1]),0.25,na.rm = TRUE),
-  p75_I_eggs = quantile(round(detect.N.dead.detectables[detect.N.dead.detectables>=1]),0.75,na.rm = TRUE),
-  maximum_I_eggs = max(round(detect.N.dead.detectables[detect.N.dead.detectables>=1]),na.rm = TRUE)
-  )
-, digits = 0,  
-#format = "html",
-col.names = c("Vaccine","freq.", "median","min.","25%","75%" ,"max."),
-caption = "Median, minimum and maximum number of dead detectable birds at moment of detection.")
-
-#as_image(tmp_table, file = "./figures/tab_deadIbirds.png")
-
-tmp_table
-
-
-### Number of live birds that are detectable at the moment of detection
- 
-  #Table
-tmp_table <- knitr::kable(S1.results%>%reframe(
-  .by = c(Treatment, time.interval.ac),
-  median_I_eggs = median(round(detect.N.live.detectables[detect.N.live.detectables>=1]),na.rm = TRUE), 
-  minimum_I_eggs = min(round(detect.N.live.detectables[detect.N.live.detectables>=1]),na.rm = TRUE),
-  p25_I_eggs = quantile(round(detect.N.live.detectables[detect.N.live.detectables>=1]),0.25,na.rm = TRUE),
-  p75_I_eggs = quantile(round(detect.N.live.detectables[detect.N.live.detectables>=1]),0.75,na.rm = TRUE),
-  maximum_I_eggs = max(round(detect.N.live.detectables[detect.N.live.detectables>=1]),na.rm = TRUE)
-  ),
-  #format = "html",
-, digits = 0, 
-col.names = c("Vaccine","Freq.", "median","min.","25%","75%" ,"max."),
-caption = "Median, minimum and maximum number of live detectable birds at moment of detection.")
-
-#as_image(tmp_table, file = "./figures/tab_liveIbirds.png")
-
-tmp_table
-
-
-
-# 
-# 
-# <!-- ## Sensitivity analyses -->
-# # Appendix A Detailed results
-# 
-# ## Fraction of outbreaks detected
-# 
-# ```{r tab_det_small, echo = FALSE, tab.cap="Probability to detect a small outbreak (<= 0.1% of flock) by passive, active with confirmation. Freq. = sampling interval (Inf = no bucket sampling only live birds), Shortest = fraction shortest detection time is by active surveillance. "}
-# 
-#  knitr::kable(table_data[,c("production_phase","Treatment","time.interval.ac", "passive_SMALL","active_SMALL","survey_SMALL","shortest_active_SMALL","missed_SMALL")], digits = 2,
-#              #format = "html",
-#              align = 'c',col.names = c("Production phase","Vaccine","Freq.","Passive"," Active","Survey","Shortest","Missed"))
-# 
-# 
-# 
-# ```
-# 
-# ```{r tab_det_large, echo = FALSE, tab.cap="Probability to detect a large outbreak (> 0.1% of the flock) by passive, active with confirmation. Freq. = sampling interval (Inf = no bucket sampling only live birds), Shortest = fraction shortest detection time is by active surveillance. "}
-# 
-# 
-#  knitr::kable( table_data[,c("production_phase","Treatment","time.interval.ac", "passive_LARGE","active_LARGE","survey_LARGE","shortest_active_LARGE","missed_LARGE")], digits = 2,
-#              #format = "html",
-#              align = 'c',col.names = c("Production phase","Vaccine","Freq.","Passive"," Active","Survey","Shortest","Missed"))
-# 
-# 
-# 
-# ```
-# 
-# ## Detection times per time point 
-# 
-# ```{r fig_det_dist_large_sample_moment,echo = FALSE, fig.cap = "Detection time distributions of large outbreaks for different active surveillance intervals at each time point. Black diamond indicates median value."}
-# 
-# # Custom labeller function
-# custom_labeller <- function(x) {
-#   ifelse(is.infinite(x), "No active surveillance", as.character(x))
-# }
-# 
-# 
-#     ggplot(S1.results%>%filter(outbreak.size.ofconcern == "LARGE" & is.finite(min.det.time)),
-#            aes(x =as.factor(round(time_point/10)*10), y = min.det.time, fill = Treatment,colour = Treatment))+
-#     geom_violin()+
-#   stat_summary(
-#     fun = median,
-#     geom = "point",
-#     shape = 18,
-#     size = 1,
-#     colour = "black",
-#     position = position_dodge(width = 0.9)
-#   )+ 
-#     facet_grid(time.interval.ac  ~., scales = "free", labeller = as_labeller(custom_labeller))+ 
-#     labs(x = "Moment of introduction",y = "Detection time")#+ 
-#     #ggtitle("Detection time distribution with passive and active detection for a large outbreak.") 
-# 
-# #ggsave("./figures/detection_times.png")
-# ```
-# 
-# ## outbreak size undetected 
-# 
-# ```{r fig_outbreak_size_undetected,echo = FALSE, fig.cap= "Outbreak size of undetected outbreaks by passive surveilllance, active bucket surveillance (different frequencies with Inf = no bucket surveilance) and live bird survey (30 day frequency) is in place."}
-# ggplot(data = S1.results%>%filter(is.infinite(min.det.time)),aes(x = final.size, y = after_stat(density)))+
-#   geom_histogram(aes(fill = as.factor(time.interval.ac)))+
-#   scale_fill_discrete(name = "Freq. bucket")+
-#   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))+
-#   facet_grid( outbreak.size.ofconcern~Treatment , scales = "free_y")
-# 
-# ```
-# 
-# 
-# # Appendix B Sanity checks
-# 
-# In this section, a number of checks are reported to show whether
-# simulations perform as expected.
-# 
-# ## Appendix B.1 probability of a major outbreak
-# 
-# The probability of a major outbreak was calculated according to
-# [@Clancy2013TheInfection] [@Nandi2019StochasticSusceptibility] for
-# gamma-distributed infectious periods and two types at infection given an
-# introduction through an low-titre bird.
-# 
-# Without vaccination, the basic reproduction number is $7.9$ the
-# probability of a major outbreak is over 90% (i.e.
-# $$1 - \dfrac{1}{R_0} \approx 1 - \dfrac{1}{7.9} = 0.87$$ ).
-# 
-# ```{r echo=FALSE, fig.cap= "Probability of a major outbreak given vaccination. "}
-# # Logit transformation function
-# logit <- function(p) log(p / (1 - p))
-# 
-# ggplot(pmajor_scenarios)+
-#   geom_point(aes(x = time_point, y = pmajor, colour = Treatment, shape = Farm))+
-#   geom_vline(aes(xintercept = 120))+
-#   ylim(0,1)+
-#   #  scale_y_continuous(
-#   #    trans = "logit",  # Use identity since we pre-transformed
-#   #    breaks = c(0.0001,0.001,0.1,0.90,0.9999),
-#   #    limits = c(0.0001, 0.9999)
-#   #      )+
-#    facet_grid(cut_off ~.)#, scale = "free")
-# ```
-# 
-# Comparison between the fraction simulated and predicted (calculated)
-# probability of a major outbreak $p_{major}$ shows a good
-# correspondence.Difference occurs when the immunity is building up.
-# Although a major outbreak is more likely to occur at that specific
-# moment in time, the relatively fast build-up causes some lower numbers
-# in the simulations (e.g. scenario CEVA_preproduction_half or
-# BI_layer_farm).
-# 
-# ```{r, echo = FALSE, fig.cap = "Comparison between calculated and simulated probability of a major outbreak" }
-# #calculate proportion of major outbreaks
-# joined_S1_results <- left_join(S1.results %>%  reframe(.by =c(Treatment, cut_off, time_point),
-#           p_major_sim = sum(final.size >=0.05*46000, na.rm = TRUE)/n()) , 
-#                                pmajor_scenarios, by = c("cut_off","Treatment","time_point")) 
-# 
-# #table
-# joined_S1_results%>%select(Treatment, cut_off,time_point,p_major_sim, pmajor,Rv)%>% knitr::kable(digits = 2, 
-#                                                                                                  #format = "html", 
-#                                                                                                  col.names = c("Treatment","Cut off","Time point","simulated $p_{major}$","predicted $p_{major}$", "Reproduction number") ,caption = "Proportion of major outbreaks per scenario.  ")#%>%as_image(file = "./figures/sim_vs_pred_pmajor.png")
-# 
-# #graph
-# n_binom <- max(scenarios_sim$run)
-# plot_data<- joined_S1_results%>%select(Treatment, cut_off,time_point,p_major_sim, pmajor)%>%mutate(.by = c(time_point,Treatment),
-#   p_major_sim_ll =clopper_pearson(n_binom*p_major_sim,n_binom)[1],
-#   p_major_sim_ul = clopper_pearson(n_binom*p_major_sim,n_binom)[2]
-#   
-# )#%>%pivot_longer(cols = c("p_major_sim","pmajor"),
-#                                                                                           #          names_to = "sim_calc",
-#                                                                                            #         values_to = "pm")
-# 
-# ggplot(plot_data)+
-#    geom_point(aes(x = time_point, y = p_major_sim, colour = Treatment))+
-#    geom_errorbar(aes(x = time_point, ymin = p_major_sim_ll,ymax = p_major_sim_ul, colour = Treatment))+
-#   geom_point(aes(x = time_point, y = pmajor, colour = Treatment), shape =2)+
-#   facet_grid(
-#     .~Treatment)
-#   
-# # ggplot(plot_data)+
-# #   geom_point(aes(x = time_point, y = pm, shape = sim_calc, colour = Treatment))+
-# #   geom_line(aes(x = time_point, y = pm, group = paste(Treatment, time_point, cut_off), colour = Treatment))
-# 
-# #graph difference b4etween simulation and calculation
-# # plot_data <- joined_S1_results%>%select(Treatment, cut_off,time_point,p_major_sim, pmajor)%>%mutate(dif_sim_calc = p_major_sim-pmajor)
-# # ggplot(plot_data)+
-# #   geom_point(aes(x = time_point, y = dif_sim_calc, colour = Treatment))+
-# #   geom_segment(aes(x = time_point, xend = time_point,  y = dif_sim_calc,yend = 0,colour = Treatment))+
-# #   facet_grid(cut_off~Treatment)+geom_vline(xintercept = 120)+ylim(c(-1,1)*1.05*max(abs(plot_data$dif_sim_calc)))
-# 
-# ```
-# 
-# # References
