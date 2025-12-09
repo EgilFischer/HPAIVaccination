@@ -855,7 +855,7 @@ consequences <- S1.results.sensitivity%>%filter(production_phase == "production"
 
 #combine outcomes to useable table.
 
-output_within_table <- full_join(full_join(correct_table_data%>%filter(production_phase == "production")%>%select(Treatment,cut_off, time.interval.ac, missed_LARGE), 
+output_within_table <- full_join(full_join(correct_table_data%>%filter(production_phase == "production")%>%select(Treatment,cut_off, time.interval.ac, missed_SMALL, missed_LARGE), 
                                            detection_times_vs_interval%>%filter(production_phase == "production")%>%select(Treatment,cut_off, time.interval.ac,p1_detection_time, median_detection_time, p2_detection_time)),
                                  consequences)
 
@@ -866,11 +866,11 @@ output_within_table <- full_join(full_join(correct_table_data%>%filter(productio
 ceva_tab_output <- output_within_table%>%
   filter(!str_detect(Treatment, "BI"))
 
-ceva_tab_output%>%knitr::kable(digits = 2, col.namess = c("Treatment","cut_off","interval","P-det","l_det_time","med_det_time","h_det_time",
+ceva_tab_output%>%knitr::kable(digits = 2, col.namess = c("Treatment","cut_off","interval","P-det negligible","P-det Large","l_det_time","med_det_time","h_det_time",
                                                           "frac.with","med I", "l I","h I","med dead","l_dead","h-dead","med live", "l live","h-live"))
 
 sink("output/consequences_ceva_sensitivity.html")
-cat(ceva_tab_output%>%knitr::kable(digits = 2, format = "html", col.namess = c("Treatment","cut_off","interval","P-det","l_det_time","med_det_time","h_det_time",
+cat(ceva_tab_output%>%knitr::kable(digits = 2, format = "html", col.namess = c("Treatment","cut_off","interval","P-det negligible","P-det Large","l_det_time","med_det_time","h_det_time",
                                                                                "frac.with","med I", "l I","h I","med dead","l_dead","h-dead","med live", "l live","h-live"))
 )
 sink()
@@ -878,12 +878,12 @@ sink()
 bi_tab_output <- output_within_table%>%
   filter(!str_detect(Treatment, "CEVA"))
 
-bi_tab_output%>%knitr::kable(digits = 2, col.namess = c("Treatment","cut_off","interval","P-det","l_det_time","med_det_time","h_det_time",
+bi_tab_output%>%knitr::kable(digits = 2, col.namess = c("Treatment","cut_off","interval","P-det negligible","P-det Large","l_det_time","med_det_time","h_det_time",
                                                         "frac.with","med I", "l I","h I","med dead","l_dead","h-dead","med live", "l live","h-live"))
+
 sink("output/consequences_bi_sensitivity.html")
-cat(bi_tab_output%>%knitr::kable(digits = 2, format = "html", col.namess = c("Treatment","cut_off","interval","P-det","l_det_time","med_det_time","h_det_time",
-                                                                             "frac.with","med I", "l I","h I","med dead","l_dead","h-dead","med live", "l live","h-live"))
-)
+cat(bi_tab_output%>%knitr::kable(digits = 2, format = "html", col.namess = c("Treatment","cut_off","interval","P-det negligible","P-det Large","l_det_time","med_det_time","h_det_time",
+                                                                             "frac.with","med I", "l I","h I","med dead","l_dead","h-dead","med live", "l live","h-live")))
 sink()
 
 
